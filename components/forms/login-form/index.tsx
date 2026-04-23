@@ -3,8 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import type { getDictionary } from "@/data/dictionaries";
 
-export default function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+type LoginDict = Awaited<ReturnType<typeof getDictionary>>["auth"]["login"];
+
+interface LoginFormProps extends React.ComponentProps<"div"> {
+	dict: LoginDict;
+}
+
+export default function LoginForm({ className, ...props }: LoginFormProps) {
 	const { dict } = props;
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>

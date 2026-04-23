@@ -1,3 +1,47 @@
 {
-	"title": "Workers Union"
+	"auth": {
+		"login": {
+			"title": "Log in to your account",
+			"description": "Write your email below to log in to your account",
+			"fields": {
+				"email": {
+					"label": "Email",
+					"placeholder": "your@email.com"
+				},
+				"password": {
+					"label": "Password",
+					"forgotLinkText": "Forgot your password?"
+				}
+			},
+			"submit": "Log in",
+			"noAccountText": "Don't have an account?",
+			"registerText": "Sign up"
+		},
+		"register": {
+			"title": "Sign up for an account",
+			"description": "Write your information below to create your account",
+			"fields": {
+				"name": {
+					"label": "Full Name",
+					"placeholder": "John Doe"
+				},
+				"email": {
+					"label": "Email",
+					"placeholder": "your@email.com",
+					"usageDescriptionText": "We use your email to contact you. We will not share your email with others."
+				},
+				"password": {
+					"label": "Password",
+					"rules": "Must be 8 characters or more."
+				},
+				"confirmPassword": {
+					"label": "Confirm Password",
+					"rules": "Please confirm your password."
+				}
+			},
+			"submit": "Sign up",
+			"hasAccountText": "Already havee an account?",
+			"loginText": "Log in"
+		}
+	}
 }

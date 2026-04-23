@@ -2,8 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type { getDictionary } from "@/data/dictionaries";
 
-export default function RegisterForm({ className, ...props }: React.ComponentProps<typeof Card>) {
+type RegisterDict = Awaited<ReturnType<typeof getDictionary>>["auth"]["register"];
+
+interface RegisterFormProps extends React.ComponentProps<typeof Card> {
+	dict: RegisterDict;
+}
+
+export default function RegisterForm({ className, ...props }: RegisterFormProps) {
 	const { dict } = props;
 	return (
 		<Card {...props}>
