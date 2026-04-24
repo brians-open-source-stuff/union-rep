@@ -17,16 +17,26 @@ model User {
   email    String @unique
   password String
   name     String
-  role     Role
+  roles    Role[]
 
   @@index(email)
 }
 
-enum Role {
-  representative
-  chairman
-  secretary
-  billing
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  users       User[]
+  permissions Permission[]
+
+  @@index(name)
+}
+
+model Permission {
+  id    String @id @default(uuid())
+  name  String @unique
+  roles Role[]
+
+  @@index(name)
 }
 
 model Employee {
