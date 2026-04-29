@@ -10,6 +10,6 @@ export default async function LoginPage({ params }: PageProps<"/[locale]">) {
 	const dict = await getDictionary(locale);
 
 	return (
-		<LoginForm dict={dict.auth.login} />
+		<LoginForm locale={locale} dict={dict.auth.login} />
 	);
 }

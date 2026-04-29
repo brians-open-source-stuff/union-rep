@@ -1,12 +1,21 @@
+import prisma from "@/config/prisma";
 import redis from "@/config/redis";
 import { SessionUser, SessionUserSchema } from "@/types";
 import crypto from "crypto";
 import { ZodError } from "zod";
 
-export async function createSession(user: SessionUser) {
+export async function createSession(user: SessionUser, ip_address: string) {
 	try {
 		const sessionId = crypto.randomBytes(32).toString("base64url");
 		await redis.set(sessionId, JSON.stringify(user), { EX: 60 * 60 * 24 });
+
+		await prisma.session.create({
+			data: {
+				sessionId,
+				userId: user.id,
+				ip_address
+			}
+		})
 
 		return sessionId;
 	} catch (error) {
@@ -19,12 +28,26 @@ export async function getSession(sessionId: string): Promise<SessionUser | null>
 	try {
 		const session = await redis.get(sessionId);
 		if (!session) return null;
-		return SessionUserSchema.parse(JSON.parse(session));
+
+		const parsed = SessionUserSchema.parse(JSON.parse(session));
+
+		const dbSession = await prisma.session.findUnique({
+			where: { sessionId },
+			select: { userId: true },
+		});
+
+		if (!dbSession || dbSession.userId !== parsed.id) {
+			await redis.del(sessionId);
+			return null;
+		}
+
+		return parsed;
 	} catch (error) {
 		console.error(error);
 		if (error instanceof ZodError) {
-			throw new Error("Invalid session data");
+			await redis.del(sessionId);
+			return null;
 		}
-		throw new Error("Redis server encountered an issue");
+		throw new Error("Session lookup failed");
 	}
 }

@@ -1,20 +1,14 @@
-"use client";
+import { getSession } from "@/data/session";
+import { cookies } from "next/headers";
+import { AppSidebar } from "./app-sidebar";
 
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
+export async function AppSidebarServer() {
+	const sessionId = (await cookies()).get("ur_session")?.value;
+	let user = null;
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	return (
-		<Sidebar collapsible="icon" {...props}>
-			<SidebarHeader>
-				<h2>Dims</h2>
-			</SidebarHeader>
-			<SidebarContent>
-				noget
-			</SidebarContent>
-			<SidebarFooter>
-				noget andet
-			</SidebarFooter>
-			<SidebarRail />
-		</Sidebar>
-	)
+	if (sessionId) {
+		user = await getSession(sessionId);
+	}
+
+	return <AppSidebar user={user} />;
 }

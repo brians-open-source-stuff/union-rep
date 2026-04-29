@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["app"]
 }
 
 model User {
@@ -17,52 +16,67 @@ model User {
   email    String @unique
   password String
   name     String
-  roles    Role[]
 
-  @@index(email)
+  roles     Role[]
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  @@index([email])
+  @@schema("app")
 }
 
 model Role {
-  id          String       @id @default(uuid())
-  name        String       @unique
+  id   String @id @default(uuid())
+  name String @unique
+
   users       User[]
   permissions Permission[]
 
-  @@index(name)
+  @@index([name])
+  @@schema("app")
 }
 
 model Permission {
-  id    String @id @default(uuid())
-  name  String @unique
+  id   String @id @default(uuid())
+  name String @unique
+
   roles Role[]
 
-  @@index(name)
+  @@index([name])
+  @@schema("app")
 }
 
 model Employee {
-  id          String       @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
-  departments Department[]
   employedAt  DateTime
   memberSince DateTime?
   birthdate   DateTime?
-  salaryTier  Int
   title       String?
   email       String?
   emailAlt    String?
   phone       String?
   phoneAlt    String?
-  managers    Manager[]
   gdprconcent DateTime?
 
-  @@index(name)
+  departments Department[]
+  managers    Manager[]
+  salaries    Salary?
+  cases       Case[]
+
+  @@index([name])
+  @@schema("app")
 }
 
 model Manager {
-  id          String       @id @default(uuid())
-  name        String
+  id   String @id @default(uuid())
+  name String
+
   departments Department[]
   employees   Employee[]
+
+  @@index([name])
+  @@schema("app")
 }
 
 model Department {
@@ -75,4 +89,66 @@ model Department {
 
   employees Employee[]
   managers  Manager[]
+
+  @@index([name])
+  @@schema("app")
+}
+
+model Salary {
+  id         String   @id @default(uuid())
+  payload    Bytes
+  keyVersion Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employeeId String   @unique
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@schema("app")
+}
+
+model Case {
+  id         String   @id @default(uuid())
+  payload    Bytes
+  keyVersion Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employeeId String
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@schema("app")
+}
+
+model AuditLog {
+  id                 String   @id @default(uuid())
+  userId             String
+  action             String
+  target_resource_id String
+  ip_address         String
+  sessionId          String
+  success            Boolean
+  createdAt          DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: NoAction)
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: NoAction)
+
+  @@index([userId, target_resource_id])
+  @@schema("app")
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  sessionId  String   @unique
+  userId     String
+  ip_address String
+  createdAt  DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+
+  @@index([sessionId])
+  @@schema("app")
 }

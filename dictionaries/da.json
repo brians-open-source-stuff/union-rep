@@ -6,16 +6,26 @@
 			"fields": {
 				"email": {
 					"label": "E-mail",
-					"placeholder": "din@e-mail.dk"
+					"placeholder": "din@e-mail.dk",
+					"errors": {
+						"invalidEmail": "Ugyldig e-mail"
+					}
 				},
 				"password": {
 					"label": "Adgangskode",
-					"forgotLinkText": "Glemt din adgangskode?"
+					"forgotLinkText": "Glemt din adgangskode?",
+					"errors": {
+						"tooShort": "Adgangskoden skal være mindst 8 tegn"
+					}
 				}
 			},
 			"submit": "Log ind",
 			"noAccountText": "Har du ikke en konto?",
-			"registerText": "Opret her"
+			"registerText": "Opret her",
+			"errors": {
+				"badCredentials": "Forkert e-mail eller adgangskode",
+				"other": "Noget gik galt. Prøv igen."
+			}
 		},
 		"register": {
 			"title": "Opret en konto",

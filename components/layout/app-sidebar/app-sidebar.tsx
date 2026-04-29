@@ -1,0 +1,77 @@
+"use client";
+
+import { NavMain } from "@/components/nav-main";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
+import { SessionUser } from "@/types";
+import Link from "next/link";
+import { FiBookOpen, FiCoffee, FiSettings, FiUmbrella, FiUsers } from "react-icons/fi"
+
+const navItemsConfig = [
+	{
+		title: "Employees",
+		url: "/employees",
+		icon: <FiUsers />,
+		items: [
+			{ title: "List employees", url: "/employees", requiresPermissions: ["employee:read"] },
+			{ title: "Add Employee", url: "/employee/new", requiresPermissions: ["employee:create"] },
+		]
+	},
+	{
+		title: "Settings",
+		url: "/settings",
+		icon: <FiSettings />,
+		items: [
+			{ title: "Role Management", url: "/settings/roles", requiresPermissions: ["role:read"] },
+			{ title: "User Management", url: "/settings/users", requiresPermissions: ["user:manage"] },
+		],
+	},
+	{
+		title: "Test",
+		url: "/Test",
+		icon: <FiCoffee />,
+		items: [
+			{ title: "Test thing A", url: "/settings/roles", requiresPermissions: ["role:read", "something:something"] },
+			{ title: "Test thing B", url: "/settings/users", requiresPermissions: ["user:manage"] },
+		],
+	},
+	{
+		title: "Documentation",
+		url: "/docs",
+		icon: <FiBookOpen />,
+		items: [
+			{ title: "Introduction", url: "/docs/intro" },
+		],
+	},
+];
+
+export function AppSidebar({ user, ...props }: React.ComponentProps<SessionUser, typeof Sidebar>) {
+	const visibleItems = navItemsConfig
+		.map(section => ({
+			...section,
+			items: section.items?.filter(item => {
+				if (!item.requiresPermissions?.length) return true;
+				if (!user) return false;
+				return item.requiresPermissions!.every(rp => user.permissions.includes(rp));
+			}),
+		}))
+		.filter(section => !section.items || section.items.length > 0);
+
+	return (
+		<Sidebar collapsible="icon" {...props}>
+			<SidebarHeader>
+				<SidebarMenuItem>
+					<SidebarMenuButton render={<Link href="/" />}>
+						<FiUmbrella /> Union Rep
+					</SidebarMenuButton>
+				</SidebarMenuItem>
+			</SidebarHeader>
+			<SidebarContent>
+				<NavMain items={visibleItems} />
+			</SidebarContent>
+			<SidebarFooter>
+				noget andet
+			</SidebarFooter>
+			<SidebarRail />
+		</Sidebar>
+	);
+}

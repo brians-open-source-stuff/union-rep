@@ -6,16 +6,26 @@
 			"fields": {
 				"email": {
 					"label": "Email",
-					"placeholder": "your@email.com"
+					"placeholder": "your@email.com",
+					"errors": {
+						"invalidEmail": "Invalid email"
+					}
 				},
 				"password": {
 					"label": "Password",
-					"forgotLinkText": "Forgot your password?"
+					"forgotLinkText": "Forgot your password?",
+					"errors": {
+						"tooShort": "Password must be at least 8 characters"
+					}
 				}
 			},
 			"submit": "Log in",
 			"noAccountText": "Don't have an account?",
-			"registerText": "Sign up"
+			"registerText": "Sign up",
+			"errors": {
+				"badCredentials": "Incorrect email or password",
+				"other": "Something went wrong. Try again."
+			}
 		},
 		"register": {
 			"title": "Sign up for an account",
