@@ -89,6 +89,36 @@ async function main() {
 	const now = new Date();
 	const employedStart = new Date("2010-01-01");
 
+	const departmentsData = [
+		{
+			name: "Northbridge Training Center",
+			streetaddress1: "Industrivej 14",
+			streetaddress2: null,
+			zipcode: 2100,
+			city: "Copenhagen",
+		},
+		{
+			name: "Harborview Skills Institute",
+			streetaddress1: "Havneplads 8",
+			streetaddress2: "2. sal",
+			zipcode: 5000,
+			city: "Odense",
+		},
+		{
+			name: "Meadowfield Learning Hub",
+			streetaddress1: "Engtoften 27",
+			streetaddress2: null,
+			zipcode: 8000,
+			city: "Aarhus",
+		},
+	];
+
+	const managerNamesByDepartment = [
+		["Sofia Berg", "Nikolaj Vester", "Emil Holm"],
+		["Freja Lund", "Jonas Mikkelsen", "Maja Riis"],
+		["Victor Kjeldsen", "Clara Dahl", "Oskar Møller"],
+	];
+
 	const employees = Array.from({ length: 250 }, () => {
 		const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
 		const employedAt = randomDate(employedStart, now);
@@ -109,12 +139,57 @@ async function main() {
 		};
 	});
 
-	// Optional: uncomment this if you want exactly 250 fictional employees on each seed run
-	// await prisma.employee.deleteMany({});
+	// Reset fictional data so each run produces the same shape of seeded relations.
+	await prisma.employee.deleteMany({});
+	await prisma.manager.deleteMany({});
+	await prisma.department.deleteMany({});
 
-	await prisma.employee.createMany({
-		data: employees,
-	});
+	const departments = await Promise.all(
+		departmentsData.map((department) => prisma.department.create({ data: department })),
+	);
+
+	const managersByDepartment = await Promise.all(
+		managerNamesByDepartment.map(async (managerNames, departmentIndex) => {
+			const department = departments[departmentIndex];
+			return Promise.all(
+				managerNames.map((name) =>
+					prisma.manager.create({
+						data: {
+							name,
+							departments: {
+								connect: [{ id: department.id }],
+							},
+						},
+					}),
+				),
+			);
+		}),
+	);
+
+	const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
+
+	for (let index = 0; index < employees.length; index += 1) {
+		const employee = employees[index];
+		const departmentIndex = index % departments.length;
+		const department = departments[departmentIndex];
+		const managerGroup = managersByDepartment[departmentIndex];
+		const managerIndex = employeeCountPerDepartment[departmentIndex] % managerGroup.length;
+		const manager = managerGroup[managerIndex];
+
+		employeeCountPerDepartment[departmentIndex] += 1;
+
+		await prisma.employee.create({
+			data: {
+				...employee,
+				departments: {
+					connect: [{ id: department.id }],
+				},
+				managers: {
+					connect: [{ id: manager.id }],
+				},
+			},
+		});
+	}
 
 	console.log("Seed complete");
 }

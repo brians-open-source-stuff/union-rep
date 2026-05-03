@@ -1,6 +1,16 @@
 import prisma from "@/config/prisma";
 import "server-only";
 
+export async function getEmployees() {
+  const employees = await prisma.employee.findMany({
+    include: {
+      departments: true,
+      managers: true
+    }
+  });
+  return employees;
+}
+
 export async function getEmployeeCounts() {
   const [totalEmployees, members] = await Promise.all([
     prisma.employee.count(),
@@ -128,11 +138,22 @@ export async function getMemberEmploymentAnniversaries() {
         e."name",
         e."employedAt",
         EXTRACT(YEAR FROM CURRENT_DATE)::int - EXTRACT(YEAR FROM e."employedAt")::int AS years_employed,
-        make_date(
-          EXTRACT(YEAR FROM CURRENT_DATE)::int,
-          EXTRACT(MONTH FROM e."employedAt")::int,
-          EXTRACT(DAY FROM e."employedAt")::int
-        ) AS anniversary_this_year
+        CASE
+          WHEN EXTRACT(MONTH FROM e."employedAt") = 2
+           AND EXTRACT(DAY FROM e."employedAt") = 29
+           AND NOT (
+             EXTRACT(YEAR FROM CURRENT_DATE)::int % 4 = 0 AND (
+               EXTRACT(YEAR FROM CURRENT_DATE)::int % 100 != 0 OR
+               EXTRACT(YEAR FROM CURRENT_DATE)::int % 400 = 0
+             )
+           )
+          THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 2, 28)
+          ELSE make_date(
+            EXTRACT(YEAR FROM CURRENT_DATE)::int,
+            EXTRACT(MONTH FROM e."employedAt")::int,
+            EXTRACT(DAY FROM e."employedAt")::int
+          )
+        END AS anniversary_this_year
       FROM "app"."Employee" e
       WHERE e."memberSince" IS NOT NULL
         AND e."employedAt" IS NOT NULL
