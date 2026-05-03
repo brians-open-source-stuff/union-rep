@@ -1,5 +1,8 @@
 import z from "zod";
 
+type Entity = "employee" | "manager" | "user" | "department" | "role" | "permission";
+type Action = "create" | "read" | "update" | "delete";
+
 export const PERMISSIONS = [
 	"employee:read",
 	"employee:create",
@@ -14,12 +17,12 @@ export const PERMISSIONS = [
 	"manager:update",
 	"manager:delete",
 	"role:read",
-	"role:manage",
+	"role:update",
 	"permission:read",
 ] as const;
 
 export const PermissionSchema = z.enum(PERMISSIONS);
-export type Permission = z.infer<typeof PermissionSchema>;
+export type Permission = `${Entity}:${Action}`;
 
 export const DEFAULT_ROLE_DEFINITIONS = {
 	admin: [...PERMISSIONS],

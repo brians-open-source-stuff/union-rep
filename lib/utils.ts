@@ -6,6 +6,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-function can(user: SessionUser, permission: Permission): boolean {
+export function can(user: SessionUser, permission: Permission): boolean {
   return user.permissions.includes(permission);
 }

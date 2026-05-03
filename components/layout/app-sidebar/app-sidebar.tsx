@@ -8,21 +8,23 @@ import { FiBookOpen, FiCoffee, FiSettings, FiUmbrella, FiUsers } from "react-ico
 
 const navItemsConfig = [
 	{
-		title: "Employees",
+		title: "Medarbejdere",
 		url: "/employees",
 		icon: <FiUsers />,
 		items: [
-			{ title: "List employees", url: "/employees", requiresPermissions: ["employee:read"] },
-			{ title: "Add Employee", url: "/employee/new", requiresPermissions: ["employee:create"] },
+			{ title: "Vis medarbejdere", url: "/employees", requiresPermissions: ["employee:read"] },
+			{ title: "Ny medarbejder", url: "/employee/new", requiresPermissions: ["employee:create"] },
 		]
 	},
 	{
-		title: "Settings",
+		title: "Indstillinger",
 		url: "/settings",
 		icon: <FiSettings />,
 		items: [
-			{ title: "Role Management", url: "/settings/roles", requiresPermissions: ["role:read"] },
-			{ title: "User Management", url: "/settings/users", requiresPermissions: ["user:manage"] },
+			{ title: "Administrer roller", url: "/settings/roles", requiresPermissions: ["role:read"] },
+			{ title: "Administrer brugere", url: "/settings/users", requiresPermissions: ["user:read"] },
+			{ title: "Administrer ledere", url: "/settings/managers", requiresPermissions: ["manager:read"] },
+			{ title: "Administrer afdelinger", url: "/settings/departments", requiresPermissions: ["department:read"] },
 		],
 	},
 	{
@@ -35,11 +37,11 @@ const navItemsConfig = [
 		],
 	},
 	{
-		title: "Documentation",
+		title: "Dokumentation",
 		url: "/docs",
 		icon: <FiBookOpen />,
 		items: [
-			{ title: "Introduction", url: "/docs/intro" },
+			{ title: "Introduktion", url: "/docs/intro" },
 		],
 	},
 ];

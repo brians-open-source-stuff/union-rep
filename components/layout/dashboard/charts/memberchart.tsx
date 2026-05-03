@@ -11,7 +11,7 @@ export default function MemberChart({ totalEmployees, members }: { totalEmployee
 
 	return (
 		<div className="bg-gray-50 p-4 rounded-2xl">
-			<h2>Membership Percentage</h2>
+			<h2 className="mb-3 text-base font-semibold">Medlemsgrad</h2>
 			<PieChart style={{ width: "100%", height: "100%", aspectRatio: "1/0.5" }} responsive>
 				<Pie
 					data={data}

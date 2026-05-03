@@ -1,6 +1,5 @@
 "use server";
 
-import { getDictionary, hasLocale } from "@/data/dictionaries";
 import { createSession } from "@/data/session";
 import { getUser } from "@/data/user-dto";
 import { LoginFormState } from "@/types";
@@ -8,22 +7,12 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import z from "zod";
 
-export default async function loginAction(locale: string, prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
+export default async function loginAction(prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
 	const { email, password } = Object.fromEntries(formData);
 
-	if (!hasLocale(locale)) {
-		return {
-			success: false,
-			fields: { email: "" },
-			errors: { form: { errors: ["Invalid locale"] } },
-		};
-	}
-
-	const dict = await getDictionary(locale);
-
 	const LoginSchema = z.object({
-		email: z.email(dict.auth.login.fields.email.errors.invalidEmail),
-		password: z.string().min(8, dict.auth.login.fields.password.errors.tooShort)
+		email: z.email("Ugyldig e-mail"),
+		password: z.string().min(8, "Adgangskoden skal være mindst 8 tegn")
 	});
 
 	const validated = LoginSchema.safeParse({
@@ -51,7 +40,7 @@ export default async function loginAction(locale: string, prevState: LoginFormSt
 				email: String(email ?? "")
 			},
 			errors: {
-				form: { errors: [dict.auth.login.errors.badCredentials] }
+				form: { errors: ["Forkert e-mail eller adgangskode"] }
 			}
 		});
 
@@ -72,10 +61,10 @@ export default async function loginAction(locale: string, prevState: LoginFormSt
 				email: String(email ?? ""),
 			},
 			errors: {
-				form: { errors: [dict.auth.login.errors.other] },
+				form: { errors: ["Noget gik galt. Prøv igen."] },
 			},
 		};
 	}
 
-	return redirect("/" + locale);
+	return redirect("/");
 }

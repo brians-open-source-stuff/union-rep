@@ -17,9 +17,10 @@ model User {
   password String
   name     String
 
-  roles     Role[]
-  sessions  Session[]
-  auditLogs AuditLog[]
+  roles         Role[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  managerAccess UserManagerAccess[]
 
   @@index([email])
   @@schema("app")
@@ -57,7 +58,7 @@ model Employee {
   emailAlt    String?
   phone       String?
   phoneAlt    String?
-  gdprconcent DateTime?
+  gdprConsent DateTime?
 
   departments Department[]
   managers    Manager[]
@@ -69,13 +70,19 @@ model Employee {
 }
 
 model Manager {
-  id   String @id @default(uuid())
-  name String
+  id      String  @id @default(uuid())
+  name    String
+  chiefId String?
 
-  departments Department[]
-  employees   Employee[]
+  chief        Manager?  @relation("ChiefManagers", fields: [chiefId], references: [id])
+  subordinates Manager[] @relation("ChiefManagers")
+
+  departments         Department[]
+  employees           Employee[]
+  userManagerAccesses UserManagerAccess[]
 
   @@index([name])
+  @@index([chiefId])
   @@schema("app")
 }
 
@@ -150,5 +157,19 @@ model Session {
   auditLogs AuditLog[]
 
   @@index([sessionId])
+  @@schema("app")
+}
+
+model UserManagerAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  managerId String
+  grantedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manager Manager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, managerId])
+  @@index([userId])
   @@schema("app")
 }

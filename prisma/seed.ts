@@ -19,6 +19,7 @@ async function main() {
 		});
 	}
 
+	// Create roles
 	for (const [roleName, permissionNames] of Object.entries(DEFAULT_ROLE_DEFINITIONS)) {
 		await prisma.role.upsert({
 			where: { name: roleName },
@@ -36,7 +37,23 @@ async function main() {
 		});
 	}
 
-	// Optional bootstrap admin user (uncomment if needed)
+	// Create union_rep role (read-only access for union representatives)
+	await prisma.role.upsert({
+		where: { name: "union_rep" },
+		update: {
+			permissions: {
+				set: ["employee:read", "department:read", "manager:read"].map((name) => ({ name })),
+			},
+		},
+		create: {
+			name: "union_rep",
+			permissions: {
+				connect: ["employee:read", "department:read", "manager:read"].map((name) => ({ name })),
+			},
+		},
+	});
+
+	// Bootstrap admin user
 	await prisma.user.upsert({
 		where: { email: "admin@unionrep.local" },
 		update: {
@@ -57,7 +74,6 @@ async function main() {
 	}
 
 	function randomBirthdate(employedAt: Date) {
-		// Keep employees between 20 and 67 at time of employment
 		const latestBirth = new Date(employedAt);
 		latestBirth.setFullYear(latestBirth.getFullYear() - 20);
 
@@ -68,7 +84,6 @@ async function main() {
 	}
 
 	function randomTitle() {
-		// 85% Underviser, remaining 15% split evenly across 3 titles (5% each)
 		const roll = Math.random();
 		if (roll < 0.85) return "Underviser";
 		if (roll < 0.90) return "Vejleder";
@@ -119,11 +134,16 @@ async function main() {
 		["Victor Kjeldsen", "Clara Dahl", "Oskar Møller"],
 	];
 
+	const chiefNamesByDepartment = [
+		"Lars Andersen",
+		"Kirsten Poulsen",
+		"Thomas Møller",
+	];
+
 	const employees = Array.from({ length: 250 }, () => {
 		const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
 		const employedAt = randomDate(employedStart, now);
 
-		// About 75% get a memberSince date
 		const hasMembership = Math.random() < 0.75;
 		const memberSince = hasMembership ? randomDate(employedAt, now) : null;
 
@@ -139,7 +159,7 @@ async function main() {
 		};
 	});
 
-	// Reset fictional data so each run produces the same shape of seeded relations.
+	// Reset fictional data
 	await prisma.employee.deleteMany({});
 	await prisma.manager.deleteMany({});
 	await prisma.department.deleteMany({});
@@ -148,14 +168,27 @@ async function main() {
 		departmentsData.map((department) => prisma.department.create({ data: department })),
 	);
 
+	// Create chiefs for each department
+	const chiefsByDepartment = await Promise.all(
+		chiefNamesByDepartment.map((chiefName) =>
+			prisma.manager.create({
+				data: { name: chiefName },
+			}),
+		),
+	);
+
+	// Create regular managers and assign them to chiefs
 	const managersByDepartment = await Promise.all(
 		managerNamesByDepartment.map(async (managerNames, departmentIndex) => {
 			const department = departments[departmentIndex];
+			const chief = chiefsByDepartment[departmentIndex];
+
 			return Promise.all(
 				managerNames.map((name) =>
 					prisma.manager.create({
 						data: {
 							name,
+							chiefId: chief.id,
 							departments: {
 								connect: [{ id: department.id }],
 							},
@@ -166,6 +199,7 @@ async function main() {
 		}),
 	);
 
+	// Create employees
 	const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
 
 	for (let index = 0; index < employees.length; index += 1) {
@@ -191,7 +225,61 @@ async function main() {
 		});
 	}
 
+	// Create union_rep users and grant them manager access
+	const unionRepUsers = [
+		{ email: "anna.jensen@unionrep.local", name: "Anna Jensen" },
+		{ email: "bent.nielsen@unionrep.local", name: "Bent Nielsen" },
+		{ email: "charlotte.hansen@unionrep.local", name: "Charlotte Hansen" },
+	];
+
+	const createdUnionReps = await Promise.all(
+		unionRepUsers.map(async (userInfo) =>
+			prisma.user.upsert({
+				where: { email: userInfo.email },
+				update: {
+					roles: { set: [{ name: "union_rep" }] },
+				},
+				create: {
+					email: userInfo.email,
+					name: userInfo.name,
+					password: await bcrypt.hash(process.env.DEFAULT_PASSWORD || "1234", 11),
+					roles: { connect: [{ name: "union_rep" }] },
+				},
+			}),
+		),
+	);
+
+	// Grant union rep access to managers
+	// Anna gets Copenhagen managers, Bent gets Odense, Charlotte gets Aarhus
+	for (let i = 0; i < createdUnionReps.length; i++) {
+		const user = createdUnionReps[i];
+		const managerGroup = managersByDepartment[i];
+
+		for (const manager of managerGroup) {
+			const existing = await prisma.userManagerAccess.findFirst({
+				where: {
+					userId: user.id,
+					managerId: manager.id,
+				},
+			});
+
+			if (!existing) {
+				await prisma.userManagerAccess.create({
+					data: {
+						userId: user.id,
+						managerId: manager.id,
+					},
+				});
+			}
+		}
+	}
+
 	console.log("Seed complete");
+	console.log("Admin: admin@unionrep.local / 1234");
+	console.log("Union Reps:");
+	console.log("  - anna.jensen@unionrep.local (Copenhagen)");
+	console.log("  - bent.nielsen@unionrep.local (Odense)");
+	console.log("  - charlotte.hansen@unionrep.local (Aarhus)");
 }
 
 main()

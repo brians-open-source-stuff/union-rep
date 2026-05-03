@@ -1,13 +1,39 @@
 import prisma from "@/config/prisma";
+import { cookies } from "next/headers";
 import "server-only";
+import { getSession } from "./session";
 
 export async function getEmployees() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("ur_session");
+  const session = await getSession(sessionCookie?.value ?? "");
+
+  if (!session) {
+    return [];
+  }
+
+  const isAdmin = session.roles.includes("admin");
+
   const employees = await prisma.employee.findMany({
+    where: isAdmin
+      ? undefined
+      : {
+        managers: {
+          some: {
+            userManagerAccesses: {
+              some: {
+                userId: session.id,
+              },
+            },
+          },
+        },
+      },
     include: {
       departments: true,
-      managers: true
-    }
+      managers: true,
+    },
   });
+
   return employees;
 }
 

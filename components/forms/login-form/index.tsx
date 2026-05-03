@@ -2,20 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import type { getDictionary } from "@/data/dictionaries";
 import { useActionState, useEffect } from "react";
 import loginAction from "./login-action";
 import { LoginFormState } from "@/types";
-
-type LoginDict = Awaited<ReturnType<typeof getDictionary>>["auth"]["login"];
-
-interface LoginFormProps extends React.ComponentProps<"div"> {
-	locale: string;
-	dict: LoginDict;
-}
 
 const initialLoginFormState: LoginFormState = {
 	success: false,
@@ -25,25 +16,21 @@ const initialLoginFormState: LoginFormState = {
 	errors: {},
 };
 
-export default function LoginForm({ className, ...props }: LoginFormProps) {
-	const { locale, dict } = props;
-	const action: (
-		state: LoginFormState,
-		payload: FormData
-	) => Promise<LoginFormState> = loginAction.bind(null, locale);
-	const [formState, formAction, pending] = useActionState<LoginFormState, FormData>(action, initialLoginFormState);
+export default function LoginForm() {
+
+	const [formState, formAction, pending] = useActionState<LoginFormState, FormData>(loginAction, initialLoginFormState);
 
 	useEffect(function () {
 		console.log(formState)
 	}, [formState]);
 
 	return (
-		<div className={cn("flex flex-col gap-6", className)} {...props}>
+		<div className="flex flex-col gap-6">
 			<Card>
 				<CardHeader>
-					<CardTitle>{dict.title}</CardTitle>
+					<CardTitle>Log ind på din konto</CardTitle>
 					<CardDescription>
-						{dict.description}
+						Skriv din e-mail herunder for at logge ind på din konto
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -51,13 +38,13 @@ export default function LoginForm({ className, ...props }: LoginFormProps) {
 						<FieldGroup>
 							<Field>
 								<FieldLabel className="flex flex-col items-start">
-									<span>{dict.fields.email.label}</span>
+									<span>E-mail</span>
 									<Input
 										tabIndex={1}
 										name="email"
 										type="email"
 										defaultValue={formState.fields.email}
-										placeholder={dict.fields.email.placeholder}
+										placeholder="din@e-mail.dk"
 										required
 									/>
 									{formState.errors?.email && <span>{formState.errors.email.errors}</span>}
@@ -66,22 +53,19 @@ export default function LoginForm({ className, ...props }: LoginFormProps) {
 							<Field>
 								<FieldLabel className="flex flex-col items-start">
 									<div className="flex justify-between w-full">
-										<span>{dict.fields.password.label}</span>
+										<span>Adgangskode</span>
 										<a
 											href="#"
 											className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
 										>
-											{dict.fields.password.forgotLinkText}
+											Glemt din adgangskode?
 										</a>
 									</div>
 									<Input tabIndex={2} name="password" type="password" required />
 								</FieldLabel>
 							</Field>
 							<Field>
-								<Button tabIndex={3} type="submit">{dict.submit}</Button>
-								<FieldDescription className="text-center">
-									{dict.noAccountText} <a href="/register">{dict.registerText}</a>
-								</FieldDescription>
+								<Button tabIndex={3} type="submit">Log ind</Button>
 							</Field>
 						</FieldGroup>
 					</form>

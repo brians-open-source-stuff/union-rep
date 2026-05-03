@@ -2,7 +2,11 @@ import prisma from "@/config/prisma";
 import "server-only";
 
 export async function getRoles() {
-	const roles = await prisma.role.findMany();
+	const roles = await prisma.role.findMany({
+		include: {
+			permissions: true
+		}
+	});
 	return roles;
 }
 

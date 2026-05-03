@@ -12,8 +12,8 @@ import {
 
 type TimelinePoint = {
 	month: string; // YYYY-MM
-	employees: number;
-	members: number;
+	Medarbejdere: number;
+	Medlemmer: number;
 	membershipRate: number;
 };
 
@@ -25,9 +25,9 @@ const chartConfig = {
 export default function MembershipTimelineChart({ data }: { data: TimelinePoint[] }) {
 	return (
 		<div className="bg-gray-50 p-4 rounded-2xl">
-			<h2 className="mb-3 text-base font-semibold">Membership Development Over Time</h2>
+			<h2 className="mb-3 text-base font-semibold">Medlemsudvikling</h2>
 
-			<ChartContainer config={chartConfig} className="h-[320px] w-full">
+			<ChartContainer config={chartConfig} className="h-80 w-full">
 				<LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
 					<CartesianGrid vertical={false} />
 					<XAxis
@@ -53,7 +53,7 @@ export default function MembershipTimelineChart({ data }: { data: TimelinePoint[
 									typeof value === "number" ? value.toLocaleString() : String(value),
 									String(name),
 								]}
-								labelFormatter={(label) => "Month: " + String(label)}
+								labelFormatter={(label) => "Måned: " + String(label)}
 							/>
 						}
 					/>
