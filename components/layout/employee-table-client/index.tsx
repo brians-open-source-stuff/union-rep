@@ -137,6 +137,7 @@ export default function EmployeeTableClient({ employees }: Props) {
 					<TableRow>
 						<TableHead>Navn</TableHead>
 						<TableHead>Afdeling</TableHead>
+						<TableHead>Titel</TableHead>
 						<TableHead>Chef/leder</TableHead>
 						<TableHead>Ansat dato</TableHead>
 						<TableHead>Indmeldelsesdato</TableHead>
@@ -147,6 +148,7 @@ export default function EmployeeTableClient({ employees }: Props) {
 						<TableRow key={employee.id}>
 							<TableCell><Link href={"/employees/" + employee.id}>{employee.name}</Link></TableCell>
 							<TableCell>{employee.departments[0]?.name ?? ""}</TableCell>
+							<TableCell>{employee.title}</TableCell>
 							<TableCell>{employee.managers[0]?.name ?? ""}</TableCell>
 							<TableCell>
 								{Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.employedAt))}

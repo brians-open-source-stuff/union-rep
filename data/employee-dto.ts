@@ -3,6 +3,16 @@ import { cookies } from "next/headers";
 import "server-only";
 import { getSession } from "./session";
 
+export async function getSingleEmployee(id: string) {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id
+    }
+  });
+
+  return employee;
+}
+
 export async function getEmployees() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("ur_session");

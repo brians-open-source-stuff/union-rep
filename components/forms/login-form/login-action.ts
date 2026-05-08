@@ -1,5 +1,6 @@
 "use server";
 
+import { logAuditEvent } from "@/data/audit-log-dto";
 import { createSession } from "@/data/session";
 import { getUser } from "@/data/user-dto";
 import { LoginFormState } from "@/types";
@@ -32,25 +33,45 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 	// TODO: Implement MFA
 
 	try {
-		const user = await getUser(validated.data.email);
-
-		if (!user || !user.validate(password as string)) return ({
-			success: false,
-			fields: {
-				email: String(email ?? "")
-			},
-			errors: {
-				form: { errors: ["Forkert e-mail eller adgangskode"] }
-			}
-		});
-
 		const h = await headers();
 		const forwardedFor = h.get("x-forwarded-for");
 		const realIp = h.get("x-real-ip")
-
 		const ip_address = forwardedFor?.split(",")[0]?.trim() || realIp || "unknown";
 
+		const user = await getUser(validated.data.email);
+
+		if (!user || !user.validate(password as string)) {
+			await logAuditEvent({
+				userId: "unknown",
+				action: "login",
+				targetResourceId: validated.data.email,
+				sessionId: "failed-login",
+				ipAddress: ip_address,
+				success: false,
+			});
+
+			return ({
+				success: false,
+				fields: {
+					email: String(email ?? "")
+				},
+				errors: {
+					form: { errors: ["Forkert e-mail eller adgangskode"] }
+				}
+			});
+		}
+
 		const sessionId = await createSession(user, ip_address);
+
+		// Successful login
+		await logAuditEvent({
+			userId: user.id,
+			action: "login",
+			targetResourceId: user.id,
+			sessionId,
+			ipAddress: ip_address,
+			success: true,
+		});
 
 		const cookieStore = await cookies();
 		cookieStore.set("ur_session", sessionId);
