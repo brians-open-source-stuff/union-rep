@@ -106,38 +106,38 @@ async function main() {
 
 	const departmentsData = [
 		{
-			name: "Northbridge Training Center",
-			streetaddress1: "Industrivej 14",
+			name: "Håndværk og Teknik",
+			streetaddress1: "Pulsen 2",
 			streetaddress2: null,
-			zipcode: 2100,
-			city: "Copenhagen",
+			zipcode: 4000,
+			city: "Roskilde",
 		},
 		{
-			name: "Harborview Skills Institute",
-			streetaddress1: "Havneplads 8",
-			streetaddress2: "2. sal",
-			zipcode: 5000,
-			city: "Odense",
+			name: "Byg/CMK",
+			streetaddress1: "Pulsen 8",
+			streetaddress2: null,
+			zipcode: 4000,
+			city: "Roskilde",
 		},
 		{
-			name: "Meadowfield Learning Hub",
-			streetaddress1: "Engtoften 27",
+			name: "Akademiet for grønne uddannelser",
+			streetaddress1: "Køgevej 131",
 			streetaddress2: null,
-			zipcode: 8000,
-			city: "Aarhus",
+			zipcode: 4000,
+			city: "Roskilde",
 		},
 	];
 
 	const managerNamesByDepartment = [
-		["Sofia Berg", "Nikolaj Vester", "Emil Holm"],
-		["Freja Lund", "Jonas Mikkelsen", "Maja Riis"],
-		["Victor Kjeldsen", "Clara Dahl", "Oskar Møller"],
+		["Carsten Erik Engsbye Heigren", "Jonas Valentin-Hvidberg", "Henrik Kastrup Lund", "Torben Matthiesen"],
+		["Søren Bartholdy", "Mads Christian Brøkner Bendix", "Astrid Holmgaard Jensen"],
+		["Dorthe Kold Navntoft", "Susanne Ogstrup", "Claus Egede Cornelius"],
 	];
 
 	const chiefNamesByDepartment = [
-		"Lars Andersen",
-		"Kirsten Poulsen",
-		"Thomas Møller",
+		"Kirsten Bach",
+		"Anders Kold",
+		"Niels-Ole Vibo Jensen",
 	];
 
 	const employees = Array.from({ length: 250 }, () => {
@@ -227,9 +227,9 @@ async function main() {
 
 	// Create union_rep users and grant them manager access
 	const unionRepUsers = [
-		{ email: "anna.jensen@unionrep.local", name: "Anna Jensen" },
-		{ email: "bent.nielsen@unionrep.local", name: "Bent Nielsen" },
-		{ email: "charlotte.hansen@unionrep.local", name: "Charlotte Hansen" },
+		{ email: "hbp@unionrep.local", name: "Henrik Bjørn Pedersen" },
+		{ email: "be@unionrep.local", name: "Brian Emilius" },
+		{ email: "sap@unionrep.local", name: "Steen Aagaard" },
 	];
 
 	const createdUnionReps = await Promise.all(
@@ -275,11 +275,11 @@ async function main() {
 	}
 
 	console.log("Seed complete");
-	console.log("Admin: admin@unionrep.local / 1234");
+	console.log("Admin: admin@unionrep.local / changeme");
 	console.log("Union Reps:");
-	console.log("  - anna.jensen@unionrep.local (Copenhagen)");
-	console.log("  - bent.nielsen@unionrep.local (Odense)");
-	console.log("  - charlotte.hansen@unionrep.local (Aarhus)");
+	console.log("  - hbp@unionrep.local (H&T)");
+	console.log("  - be@unionrep.local (Byg/CMK)");
+	console.log("  - sap@unionrep.local (Vilvorde)");
 }
 
 main()

@@ -4,20 +4,25 @@ type Entity = "employee" | "manager" | "user" | "department" | "role" | "permiss
 type Action = "create" | "read" | "update" | "delete";
 
 export const PERMISSIONS = [
-	"employee:read",
 	"employee:create",
+	"employee:read",
 	"employee:update",
 	"employee:delete",
-	"department:read",
 	"department:create",
+	"department:read",
 	"department:update",
 	"department:delete",
-	"manager:read",
 	"manager:create",
+	"manager:read",
 	"manager:update",
 	"manager:delete",
+	"user:create",
+	"user:read",
+	"user:update",
+	"role:create",
 	"role:read",
 	"role:update",
+	"role:delete",
 	"permission:read",
 ] as const;
 
@@ -47,4 +52,59 @@ export type LoginFormState = {
 		password?: { errors?: string[] };
 		form?: { errors?: string[] };
 	};
+};
+
+export type Note = {
+	createdAt: Date;
+	createdBy: String;
+	content: String;
+}
+
+export type EmployeeCase = {
+	createdAt: Date;
+	createdBy: String;
+	name: String;
+	description: String;
+	notes: Note[] | null;
+}
+
+export type CasePayloadV1 = {
+	name: string;
+	description: string;
+	notes: Array<{
+		createdAt: string; // ISO string in ciphertext payload
+		createdBy: string;
+		content: string;
+	}>;
+};
+
+export type EncryptedCaseEnvelopeV1 = {
+	v: 1;
+	alg: "A256GCM";
+	keyVersion: number;
+	kid: string; // key identifier
+	iv: string; // base64url
+	ct: string; // base64url ciphertext + tag
+	aad: string; // base64url of canonical AAD JSON
+};
+
+export type CreateEncryptedCaseInput = {
+	employeeId: string;
+	envelope: EncryptedCaseEnvelopeV1;
+};
+
+export type StoredEncryptedCase = {
+	id: string;
+	employeeId: string;
+	keyVersion: number;
+	envelope: EncryptedCaseEnvelopeV1;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type CaseAadV1 = {
+	kind: "employee-case";
+	employeeId: string;
+	keyVersion: number;
+	kid: string;
 };

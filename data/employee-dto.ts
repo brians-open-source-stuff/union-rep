@@ -1,28 +1,57 @@
-import prisma from "@/config/prisma";
-import { cookies } from "next/headers";
 import "server-only";
-import { getSession } from "./session";
+import prisma from "@/config/prisma";
+import { getCurrentSession } from "./session";
+import { can } from "@/lib/utils";
+import { logAuditEvent } from "./audit-log-dto";
+import { getIP } from "@/lib/ip";
+import { getCurrentUser } from "./user-dto";
 
 export async function getSingleEmployee(id: string) {
-  const employee = await prisma.employee.findUnique({
-    where: {
-      id
-    }
-  });
+  const { sessionId, user } = await getCurrentSession();
+  if (!sessionId) return null;
 
-  return employee;
+  if (!can(user, "employee:read")) return null;
+
+  try {
+    const employee = await prisma.employee.findUnique({
+      where: {
+        id
+      },
+      include: {
+        managers: true,
+        departments: true,
+      }
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId: sessionId,
+      ipAddress: await getIP(),
+      action: "read",
+      targetResourceId: id,
+      success: true,
+    });
+    return employee;
+  } catch (error) {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId: sessionId,
+      ipAddress: await getIP(),
+      action: "read",
+      targetResourceId: id,
+      success: false,
+    });
+    throw new Error("Error getting employee")
+  }
 }
 
 export async function getEmployees() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("ur_session");
-  const session = await getSession(sessionCookie?.value ?? "");
+  const { sessionId, user } = await getCurrentSession();
+  if (!sessionId) return [];
 
-  if (!session) {
-    return [];
-  }
+  if (!can(user, "employee:read")) return null;
 
-  const isAdmin = session.roles.includes("admin");
+  const isAdmin = user.roles.includes("admin");
 
   const employees = await prisma.employee.findMany({
     where: isAdmin
@@ -32,7 +61,7 @@ export async function getEmployees() {
           some: {
             userManagerAccesses: {
               some: {
-                userId: session.id,
+                userId: user.id,
               },
             },
           },

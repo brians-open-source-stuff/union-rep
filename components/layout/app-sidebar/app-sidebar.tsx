@@ -1,6 +1,7 @@
 "use client";
 
 import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
 import { SessionUser } from "@/types";
 import Link from "next/link";
@@ -71,7 +72,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<SessionUser,
 				<NavMain items={visibleItems} />
 			</SidebarContent>
 			<SidebarFooter>
-				noget andet
+				<NavUser user={user} />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

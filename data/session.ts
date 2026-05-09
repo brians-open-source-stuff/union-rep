@@ -1,8 +1,10 @@
+import "server-only";
 import prisma from "@/config/prisma";
 import redis from "@/config/redis";
 import { SessionUser, SessionUserSchema } from "@/types";
 import crypto from "crypto";
 import { ZodError } from "zod";
+import { cookies } from "next/headers";
 
 export async function createSession(user: SessionUser, ip_address: string) {
 	try {
@@ -50,4 +52,17 @@ export async function getSession(sessionId: string): Promise<SessionUser | null>
 		}
 		throw new Error("Session lookup failed");
 	}
+}
+
+export async function getCurrentSession(): Promise<{ sessionId: string; user: SessionUser } | null> {
+	const cookieStore = await cookies();
+	const sessionCookie = cookieStore.get("ur_session");
+	const sessionId = sessionCookie?.value;
+
+	if (!sessionId) return null;
+
+	const user = await getSession(sessionId);
+	if (!user) return null;
+
+	return { sessionId, user };
 }
