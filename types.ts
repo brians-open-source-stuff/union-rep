@@ -1,6 +1,6 @@
 import z from "zod";
 
-type Entity = "employee" | "manager" | "user" | "department" | "role" | "permission";
+type Entity = "employee" | "manager" | "user" | "department" | "role" | "permission" | "session";
 type Action = "create" | "read" | "update" | "delete";
 
 export const PERMISSIONS = [
@@ -24,6 +24,8 @@ export const PERMISSIONS = [
 	"role:update",
 	"role:delete",
 	"permission:read",
+	"session:read",
+	"session:delete",
 ] as const;
 
 export const PermissionSchema = z.enum(PERMISSIONS);
@@ -44,6 +46,7 @@ export type SessionUser = z.infer<typeof SessionUserSchema>;
 
 export type LoginFormState = {
 	success: boolean;
+	userId?: string;
 	fields: {
 		email: string;
 	};
@@ -56,15 +59,15 @@ export type LoginFormState = {
 
 export type Note = {
 	createdAt: Date;
-	createdBy: String;
-	content: String;
+	createdBy: string;
+	content: string;
 }
 
 export type EmployeeCase = {
 	createdAt: Date;
-	createdBy: String;
-	name: String;
-	description: String;
+	createdBy: string;
+	name: string;
+	description: string;
 	notes: Note[] | null;
 }
 

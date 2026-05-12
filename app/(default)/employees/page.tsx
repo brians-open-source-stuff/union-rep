@@ -1,9 +1,11 @@
 import EmployeeTableClient from "@/components/layout/employee-table-client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getEmployees } from "@/data/employee-dto";
+import { notFound } from "next/navigation";
 
 export default async function EmployeePage() {
   const employees = await getEmployees();
+
+  if (!employees) notFound();
 
   return (
     <>

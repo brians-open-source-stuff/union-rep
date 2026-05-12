@@ -8,7 +8,7 @@ import { useActionState } from "react";
 import roleAction from "./role-action";
 
 export default function RoleForm() {
-	const [formState, formAction, pending] = useActionState(roleAction, {});
+	const [, formAction] = useActionState(roleAction, {});
 	return (
 		<form action={formAction}>
 			<DialogHeader>

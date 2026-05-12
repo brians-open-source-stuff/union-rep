@@ -21,6 +21,7 @@ model User {
   sessions      Session[]
   auditLogs     AuditLog[]
   managerAccess UserManagerAccess[]
+  deviceKeys    UserDeviceKey[]
 
   @@index([email])
   @@schema("app")
@@ -72,6 +73,7 @@ model Employee {
 model Manager {
   id      String  @id @default(uuid())
   name    String
+  title   String
   chiefId String?
 
   chief        Manager?  @relation("ChiefManagers", fields: [chiefId], references: [id])
@@ -117,30 +119,48 @@ model Salary {
 
 model Case {
   id         String   @id @default(uuid())
-  payload    Bytes
+  payload    Json
   keyVersion Int      @default(1)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   employeeId String
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  keyEnvelopes CaseKeyEnvelope[]
 
   @@index([employeeId])
   @@schema("app")
 }
 
+model CaseKeyEnvelope {
+  id              String   @id @default(uuid())
+  caseId          String
+  recipientUserId String
+  recipientKeyId  String
+  wrapAlg         String
+  edk             String
+  createdAt       DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, recipientKeyId])
+  @@index([caseId])
+  @@index([recipientUserId])
+  @@schema("app")
+}
+
 model AuditLog {
   id                 String   @id @default(uuid())
-  userId             String
+  userId             String?
   action             String
   target_resource_id String
   ip_address         String
-  sessionId          String
+  sessionId          String?
   success            Boolean
   createdAt          DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: NoAction)
-  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: NoAction)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: NoAction)
+  session Session? @relation(fields: [sessionId], references: [sessionId], onDelete: NoAction)
 
   @@index([userId, target_resource_id])
   @@schema("app")
@@ -151,12 +171,30 @@ model Session {
   sessionId  String   @unique
   userId     String
   ip_address String
+  expiresAt  DateTime @default(dbgenerated("NOW() + INTERVAL '86400 seconds'"))
   createdAt  DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   auditLogs AuditLog[]
 
   @@index([sessionId])
+  @@schema("app")
+}
+
+model UserDeviceKey {
+  id        String    @id @default(uuid())
+  userId    String
+  keyId     String    @unique
+  publicKey Json
+  algorithm String
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyId])
   @@schema("app")
 }
 

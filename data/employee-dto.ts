@@ -4,11 +4,12 @@ import { getCurrentSession } from "./session";
 import { can } from "@/lib/utils";
 import { logAuditEvent } from "./audit-log-dto";
 import { getIP } from "@/lib/ip";
-import { getCurrentUser } from "./user-dto";
 
 export async function getSingleEmployee(id: string) {
-  const { sessionId, user } = await getCurrentSession();
-  if (!sessionId) return null;
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return null;
+
+  const { sessionId, user } = currentSession;
 
   if (!can(user, "employee:read")) return null;
 
@@ -32,7 +33,7 @@ export async function getSingleEmployee(id: string) {
       success: true,
     });
     return employee;
-  } catch (error) {
+  } catch {
     await logAuditEvent({
       userId: user.id,
       sessionId: sessionId,
@@ -46,8 +47,10 @@ export async function getSingleEmployee(id: string) {
 }
 
 export async function getEmployees() {
-  const { sessionId, user } = await getCurrentSession();
-  if (!sessionId) return [];
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return [];
+
+  const { user } = currentSession;
 
   if (!can(user, "employee:read")) return null;
 

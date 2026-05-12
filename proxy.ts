@@ -1,4 +1,4 @@
-import { getSession } from "@/data/session";
+import { hasSession } from "@/data/session";
 import { NextRequest, NextResponse } from "next/server";
 
 const publicRoutes = new Set(["/login"]);
@@ -7,19 +7,19 @@ export async function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	const sessionId = request.cookies.get("ur_session")?.value;
-	let hasValidSession = false;
+	let isAuthenticated = false;
 
 	if (sessionId) {
 		try {
-			hasValidSession = !!(await getSession(sessionId));
+			isAuthenticated = await hasSession(sessionId);
 		} catch {
-			hasValidSession = false;
+			isAuthenticated = false;
 		}
 	}
 
 	const isPublicRoute = publicRoutes.has(pathname);
 
-	if (!hasValidSession && !isPublicRoute) {
+	if (!isAuthenticated && !isPublicRoute) {
 		const url = request.nextUrl.clone();
 		url.pathname = "/login";
 		const response = NextResponse.redirect(url);
@@ -27,13 +27,13 @@ export async function proxy(request: NextRequest) {
 		return response;
 	}
 
-	if (hasValidSession && isPublicRoute) {
+	if (isAuthenticated && isPublicRoute) {
 		const url = request.nextUrl.clone();
-		url.pathname = pathname;
+		url.pathname = "/";
 		return NextResponse.redirect(url);
 	}
 
-	if (!hasValidSession && sessionId) {
+	if (!isAuthenticated && sessionId) {
 		const response = NextResponse.next();
 		response.cookies.delete("ur_session");
 		return response;

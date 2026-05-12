@@ -7,7 +7,22 @@ import { SessionUser } from "@/types";
 import Link from "next/link";
 import { FiBookOpen, FiCoffee, FiSettings, FiUmbrella, FiUsers } from "react-icons/fi"
 
-const navItemsConfig = [
+type SessionPermission = SessionUser["permissions"][number];
+
+type NavSubItem = {
+	title: string;
+	url: string;
+	requiresPermissions?: SessionPermission[];
+};
+
+type NavSection = {
+	title: string;
+	url: string;
+	icon: React.ReactNode;
+	items?: NavSubItem[];
+};
+
+const navItemsConfig: NavSection[] = [
 	{
 		title: "Medarbejdere",
 		url: "/employees",
@@ -22,10 +37,11 @@ const navItemsConfig = [
 		url: "/settings",
 		icon: <FiSettings />,
 		items: [
-			{ title: "Administrer roller", url: "/settings/roles", requiresPermissions: ["role:read"] },
-			{ title: "Administrer brugere", url: "/settings/users", requiresPermissions: ["user:read"] },
-			{ title: "Administrer ledere", url: "/settings/managers", requiresPermissions: ["manager:read"] },
-			{ title: "Administrer afdelinger", url: "/settings/departments", requiresPermissions: ["department:read"] },
+			{ title: "Roller", url: "/settings/roles", requiresPermissions: ["role:read"] },
+			{ title: "Brugere", url: "/settings/users", requiresPermissions: ["user:read"] },
+			{ title: "Ledere", url: "/settings/managers", requiresPermissions: ["manager:read"] },
+			{ title: "Afdelinger", url: "/settings/departments", requiresPermissions: ["department:read"] },
+			{ title: "Sessioner", url: "/settings/sessions", requiresPermissions: ["session:read"] },
 		],
 	},
 	{
@@ -33,8 +49,8 @@ const navItemsConfig = [
 		url: "/Test",
 		icon: <FiCoffee />,
 		items: [
-			{ title: "Test thing A", url: "/settings/roles", requiresPermissions: ["role:read", "something:something"] },
-			{ title: "Test thing B", url: "/settings/users", requiresPermissions: ["user:manage"] },
+			{ title: "Test thing A", url: "/settings/roles", requiresPermissions: ["role:read", "permission:read"] },
+			{ title: "Test thing B", url: "/settings/users", requiresPermissions: ["user:update"] },
 		],
 	},
 	{
@@ -47,7 +63,7 @@ const navItemsConfig = [
 	},
 ];
 
-export function AppSidebar({ user, ...props }: React.ComponentProps<SessionUser, typeof Sidebar>) {
+export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: SessionUser | null }) {
 	const visibleItems = navItemsConfig
 		.map(section => ({
 			...section,
@@ -72,7 +88,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<SessionUser,
 				<NavMain items={visibleItems} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser user={user} />
+				{user ? <NavUser user={{ name: user.name, email: "", avatar: "" }} /> : null}
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

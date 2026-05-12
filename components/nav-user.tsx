@@ -21,17 +21,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ChevronsUpDownIcon, BellIcon, LogOutIcon } from "lucide-react";
+import logoutAction from "@/components/forms/logout-form/logout-action";
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile } = useSidebar();
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -72,19 +73,20 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <BellIcon
-                />
+                <BellIcon />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOutIcon
-              />
-              Log out
+            <DropdownMenuItem className="p-0">
+              <form action={logoutAction} className="w-full">
+                <button type="submit" className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none">
+                  <LogOutIcon className="size-4" />
+                  Log ud
+                </button>
+              </form>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

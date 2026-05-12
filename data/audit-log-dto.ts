@@ -4,10 +4,10 @@ import "server-only";
 type AuditAction = "create" | "read" | "update" | "delete" | "login" | "logout";
 
 type LogAuditEventInput = {
-  userId: string;
+  userId?: string;
   action: AuditAction;
   targetResourceId: string;
-  sessionId: string;
+  sessionId?: string;
   ipAddress: string;
   success?: boolean;
 };

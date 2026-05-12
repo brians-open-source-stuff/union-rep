@@ -7,6 +7,7 @@ import Link from "next/link";
 type Employee = {
 	id: string;
 	name: string;
+	title: string | null;
 	employedAt: string | Date;
 	memberSince: string | Date | null;
 	departments: { id: string; name: string }[];

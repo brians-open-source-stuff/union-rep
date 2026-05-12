@@ -5,7 +5,6 @@ import { createSession } from "@/data/session";
 import { getUser } from "@/data/user-dto";
 import { LoginFormState } from "@/types";
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
 import z from "zod";
 
 export default async function loginAction(prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
@@ -42,10 +41,8 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 
 		if (!user || !user.validate(password as string)) {
 			await logAuditEvent({
-				userId: "unknown",
 				action: "login",
 				targetResourceId: validated.data.email,
-				sessionId: "failed-login",
 				ipAddress: ip_address,
 				success: false,
 			});
@@ -74,8 +71,21 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 		});
 
 		const cookieStore = await cookies();
-		cookieStore.set("ur_session", sessionId);
-	} catch (error) {
+		cookieStore.set("ur_session", sessionId, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "lax",
+			maxAge: 60 * 60 * 24,
+			path: "/",
+		});
+
+		return {
+			success: true,
+			userId: user.id,
+			fields: { email: validated.data.email },
+			errors: {},
+		}
+	} catch {
 		return {
 			success: false,
 			fields: {
@@ -86,6 +96,4 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 			},
 		};
 	}
-
-	return redirect("/");
 }

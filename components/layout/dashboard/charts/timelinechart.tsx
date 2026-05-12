@@ -11,9 +11,9 @@ import {
 } from "recharts";
 
 type TimelinePoint = {
-	month: string; // YYYY-MM
-	Medarbejdere: number;
-	Medlemmer: number;
+	month: string;
+	employees: number;
+	members: number;
 	membershipRate: number;
 };
 

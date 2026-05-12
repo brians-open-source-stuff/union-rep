@@ -42,13 +42,13 @@ async function main() {
 		where: { name: "union_rep" },
 		update: {
 			permissions: {
-				set: ["employee:read", "department:read", "manager:read"].map((name) => ({ name })),
+				set: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read", "manager:read"].map((name) => ({ name })),
 			},
 		},
 		create: {
 			name: "union_rep",
 			permissions: {
-				connect: ["employee:read", "department:read", "manager:read"].map((name) => ({ name })),
+				connect: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read", "manager:read"].map((name) => ({ name })),
 			},
 		},
 	});
@@ -161,6 +161,7 @@ async function main() {
 
 	// Reset fictional data
 	await prisma.employee.deleteMany({});
+	await prisma.employee.deleteMany({});
 	await prisma.manager.deleteMany({});
 	await prisma.department.deleteMany({});
 
@@ -170,9 +171,15 @@ async function main() {
 
 	// Create chiefs for each department
 	const chiefsByDepartment = await Promise.all(
-		chiefNamesByDepartment.map((chiefName) =>
+		chiefNamesByDepartment.map((chiefName, departmentIndex) =>
 			prisma.manager.create({
-				data: { name: chiefName },
+				data: {
+					name: chiefName,
+					title: "Uddannelseschef",
+					departments: {
+						connect: [{ id: departments[departmentIndex].id }],
+					},
+				},
 			}),
 		),
 	);
@@ -188,6 +195,7 @@ async function main() {
 					prisma.manager.create({
 						data: {
 							name,
+							title: "Uddannelsesleder",
 							chiefId: chief.id,
 							departments: {
 								connect: [{ id: department.id }],

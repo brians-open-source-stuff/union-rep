@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Role } from "@/generated/prisma/client";
 
-export default function EditRoleForm({ role }) {
-	console.log(role)
+export default function EditRoleForm({ role }: { role: Readonly<Role> }) {
 
 	return (
 		<form>

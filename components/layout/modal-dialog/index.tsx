@@ -1,8 +1,15 @@
 "use client";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
-export default function ModalDialog({ children, buttonText, buttonVariant = "default" }) {
+type ModalDialogProps = {
+	children: ReactNode;
+	buttonText: ReactNode;
+	buttonVariant?: React.ComponentProps<typeof Button>["variant"];
+};
+
+export default function ModalDialog({ children, buttonText, buttonVariant = "default" }: ModalDialogProps) {
 	return (
 		<>
 			<Dialog>
