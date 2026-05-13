@@ -29,7 +29,7 @@ const navItemsConfig: NavSection[] = [
 		icon: <FiUsers />,
 		items: [
 			{ title: "Vis medarbejdere", url: "/employees", requiresPermissions: ["employee:read"] },
-			{ title: "Ny medarbejder", url: "/employee/new", requiresPermissions: ["employee:create"] },
+			{ title: "Ny medarbejder", url: "/employees/new", requiresPermissions: ["employee:create"] },
 		]
 	},
 	{

@@ -1,27 +1,45 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import EditEmployeeForm from "@/components/forms/edit-employee-form";
+import DeleteEmployeeForm from "@/components/forms/delete-employee-form";
+import ModalDialog from "@/components/layout/modal-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
+import { FiPenTool, FiTrash2 } from "react-icons/fi";
 
 type Employee = {
 	id: string;
 	name: string;
 	title: string | null;
+	email: string | null;
+	emailAlt: string | null;
+	phone: string | null;
+	phoneAlt: string | null;
 	employedAt: string | Date;
 	memberSince: string | Date | null;
 	departments: { id: string; name: string }[];
 	managers: { id: string; name: string; chiefId: string | null }[];
 };
 
+type ManagerOption = {
+	id: string;
+	name: string;
+	title: string;
+	chiefId: string | null;
+};
+
 type Props = {
 	employees: Employee[];
+	managers: ManagerOption[];
+	canUpdateEmployee: boolean;
+	canDeleteEmployee: boolean;
 };
 
 type MembershipFilter = "all" | "members" | "non-members";
 type SortOption = "name" | "employedAt";
 
-export default function EmployeeTableClient({ employees }: Props) {
+export default function EmployeeTableClient({ employees, managers, canUpdateEmployee, canDeleteEmployee }: Props) {
 	const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("all");
 	const [departmentFilter, setDepartmentFilter] = useState("");
 	const [managerFilter, setManagerFilter] = useState("");
@@ -39,7 +57,7 @@ export default function EmployeeTableClient({ employees }: Props) {
 		return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "da"));
 	}, [employees]);
 
-	const managers = useMemo(() => {
+	const managerOptions = useMemo(() => {
 		const map = new Map<string, { id: string; name: string }>();
 
 		for (const employee of employees) {
@@ -116,7 +134,7 @@ export default function EmployeeTableClient({ employees }: Props) {
 					className="rounded-md border px-3 py-2"
 				>
 					<option value="">Alle ledere</option>
-					{managers.map((manager) => (
+					{managerOptions.map((manager) => (
 						<option key={manager.id} value={manager.id}>
 							{manager.name}
 						</option>
@@ -136,6 +154,7 @@ export default function EmployeeTableClient({ employees }: Props) {
 			<Table>
 				<TableHeader>
 					<TableRow>
+						{canUpdateEmployee || canDeleteEmployee ? <TableHead></TableHead> : null}
 						<TableHead>Navn</TableHead>
 						<TableHead>Afdeling</TableHead>
 						<TableHead>Titel</TableHead>
@@ -154,6 +173,22 @@ export default function EmployeeTableClient({ employees }: Props) {
 
 							return (
 								<TableRow key={employee.id}>
+									{canUpdateEmployee || canDeleteEmployee ? (
+										<TableCell className="w-fit">
+											<div className="flex items-center gap-1">
+												{canUpdateEmployee ? (
+													<ModalDialog buttonText={<FiPenTool />} buttonVariant="ghost">
+														<EditEmployeeForm employee={employee} managers={managers} />
+													</ModalDialog>
+												) : null}
+												{canDeleteEmployee ? (
+													<ModalDialog buttonText={<FiTrash2 />} buttonVariant="ghost">
+														<DeleteEmployeeForm employeeId={employee.id} employeeName={employee.name} />
+													</ModalDialog>
+												) : null}
+											</div>
+										</TableCell>
+									) : null}
 									<TableCell><Link href={"/employees/" + employee.id}>{employee.name}</Link></TableCell>
 									<TableCell>{employee.departments[0]?.name ?? ""}</TableCell>
 									<TableCell>{employee.title}</TableCell>

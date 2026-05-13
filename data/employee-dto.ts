@@ -17,6 +17,83 @@ export type UpdateEmployeeDtoInput = {
   chiefManagerId: string | null;
 };
 
+export type CreateEmployeeDtoInput = {
+  name: string;
+  employedAt: Date;
+  memberSince: Date | null;
+  birthdate: Date | null;
+  title: string | null;
+  email: string | null;
+  emailAlt: string | null;
+  phone: string | null;
+  phoneAlt: string | null;
+  managerId: string | null;
+  chiefManagerId: string | null;
+};
+
+export type EmployeeMutationResult = {
+  ok: boolean;
+  reason?: string;
+  employeeId?: string;
+};
+
+export async function createEmployee(input: CreateEmployeeDtoInput): Promise<EmployeeMutationResult> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
+
+  const { sessionId, user } = currentSession;
+  if (!can(user, "employee:create")) {
+    return { ok: false, reason: "Mangler rettighed: employee:create" };
+  }
+
+  const managerIds = [input.managerId, input.chiefManagerId].filter(
+    (value): value is string => Boolean(value)
+  );
+  const uniqueManagerIds = [...new Set(managerIds)];
+
+  try {
+    const employee = await prisma.employee.create({
+      data: {
+        name: input.name,
+        employedAt: input.employedAt,
+        memberSince: input.memberSince,
+        birthdate: input.birthdate,
+        title: input.title,
+        email: input.email,
+        emailAlt: input.emailAlt,
+        phone: input.phone,
+        phoneAlt: input.phoneAlt,
+        managers: {
+          connect: uniqueManagerIds.map((id) => ({ id })),
+        },
+      },
+      select: { id: true },
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "create",
+      targetResourceId: employee.id,
+      success: true,
+    });
+
+    return { ok: true, employeeId: employee.id };
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "create",
+      targetResourceId: "employee:create",
+      success: false,
+    });
+
+    return { ok: false, reason: "Kunne ikke oprette medarbejderen" };
+  }
+}
+
 export async function getSingleEmployee(id: string) {
   const currentSession = await getCurrentSession();
   if (!currentSession) return null;
@@ -179,6 +256,45 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
     });
 
     return { ok: false, reason: "Kunne ikke opdatere medarbejderen" };
+  }
+}
+
+export async function deleteEmployee(employeeId: string): Promise<EmployeeMutationResult> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
+
+  const { sessionId, user } = currentSession;
+  if (!can(user, "employee:delete")) {
+    return { ok: false, reason: "Mangler rettighed: employee:delete" };
+  }
+
+  try {
+    await prisma.employee.delete({
+      where: { id: employeeId },
+      select: { id: true },
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "delete",
+      targetResourceId: employeeId,
+      success: true,
+    });
+
+    return { ok: true, employeeId };
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "delete",
+      targetResourceId: employeeId,
+      success: false,
+    });
+
+    return { ok: false, reason: "Kunne ikke slette medarbejderen" };
   }
 }
 
