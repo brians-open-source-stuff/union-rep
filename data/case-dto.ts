@@ -17,11 +17,12 @@ export type EncryptedCaseForClient = {
 export type CreateEncryptedCaseDtoInput = {
   employeeId: string;
   envelope: EncryptedCaseEnvelopeV1;
-  wrappedKey: {
+  wrappedKeys: Array<{
+    userId: string;
     edk: string;
     keyId: string;
     wrapAlg: string;
-  };
+  }>;
 };
 
 export type CreateEncryptedCaseDtoResult = {
@@ -78,6 +79,10 @@ export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): P
     return { ok: false, reason: "Mangler rettighed: employee:create" };
   }
 
+  if (input.wrappedKeys.length === 0) {
+    return { ok: false, reason: "Ingen modtagernøgler modtaget" };
+  }
+
   try {
     const created = await prisma.case.create({
       data: {
@@ -85,11 +90,14 @@ export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): P
         keyVersion: input.envelope.keyVersion,
         payload: input.envelope,
         keyEnvelopes: {
-          create: {
-            recipientUserId: session.user.id,
-            recipientKeyId: input.wrappedKey.keyId,
-            wrapAlg: input.wrappedKey.wrapAlg,
-            edk: input.wrappedKey.edk,
+          createMany: {
+            data: input.wrappedKeys.map((wrappedKey) => ({
+              recipientUserId: wrappedKey.userId,
+              recipientKeyId: wrappedKey.keyId,
+              wrapAlg: wrappedKey.wrapAlg,
+              edk: wrappedKey.edk,
+            })),
+            skipDuplicates: true,
           },
         },
       },
@@ -124,11 +132,12 @@ export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): P
 export type UpdateEncryptedCaseDtoInput = {
   caseId: string;
   envelope: EncryptedCaseEnvelopeV1;
-  wrappedKey: {
+  wrappedKeys: Array<{
+    userId: string;
     edk: string;
     keyId: string;
     wrapAlg: string;
-  };
+  }>;
 };
 
 export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): Promise<CreateEncryptedCaseDtoResult> {
@@ -136,6 +145,10 @@ export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): P
   if (!session) return { ok: false, reason: "Ingen aktiv session" };
   if (!can(session.user, "employee:update")) {
     return { ok: false, reason: "Mangler rettighed: employee:update" };
+  }
+
+  if (input.wrappedKeys.length === 0) {
+    return { ok: false, reason: "Ingen modtagernøgler modtaget" };
   }
 
   try {
@@ -147,24 +160,20 @@ export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): P
           keyVersion: input.envelope.keyVersion,
         },
       }),
-      prisma.caseKeyEnvelope.upsert({
+      prisma.caseKeyEnvelope.deleteMany({
         where: {
-          caseId_recipientKeyId: {
-            caseId: input.caseId,
-            recipientKeyId: input.wrappedKey.keyId,
-          },
-        },
-        create: {
           caseId: input.caseId,
-          recipientUserId: session.user.id,
-          recipientKeyId: input.wrappedKey.keyId,
-          wrapAlg: input.wrappedKey.wrapAlg,
-          edk: input.wrappedKey.edk,
         },
-        update: {
-          edk: input.wrappedKey.edk,
-          wrapAlg: input.wrappedKey.wrapAlg,
-        },
+      }),
+      prisma.caseKeyEnvelope.createMany({
+        data: input.wrappedKeys.map((wrappedKey) => ({
+          caseId: input.caseId,
+          recipientUserId: wrappedKey.userId,
+          recipientKeyId: wrappedKey.keyId,
+          wrapAlg: wrappedKey.wrapAlg,
+          edk: wrappedKey.edk,
+        })),
+        skipDuplicates: true,
       }),
     ]);
 

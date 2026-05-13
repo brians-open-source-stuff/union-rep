@@ -23,10 +23,15 @@ const EnvelopeSchema = z.object({
 const ActionSchema = z.object({
   employeeId: z.string().uuid(),
   envelope: z.string().min(1),
-  edk: z.string().min(1),
-  keyId: z.string().uuid(),
-  wrapAlg: z.literal("RSA-OAEP-256"),
+  wrappedKeys: z.string().min(1),
 });
+
+const WrappedKeysSchema = z.array(z.object({
+  userId: z.string().uuid(),
+  keyId: z.string().uuid(),
+  edk: z.string().min(1),
+  wrapAlg: z.literal("RSA-OAEP-256"),
+})).min(1);
 
 export default async function createCaseAction(
   _prevState: CreateCaseFormState,
@@ -38,8 +43,10 @@ export default async function createCaseAction(
   }
 
   let envelope: EncryptedCaseEnvelopeV1;
+  let wrappedKeys: z.infer<typeof WrappedKeysSchema>;
   try {
     envelope = EnvelopeSchema.parse(JSON.parse(payload.data.envelope));
+    wrappedKeys = WrappedKeysSchema.parse(JSON.parse(payload.data.wrappedKeys));
   } catch {
     return { success: false, error: "Kunne ikke læse krypteret payload" };
   }
@@ -47,11 +54,7 @@ export default async function createCaseAction(
   const created = await createEncryptedCase({
     employeeId: payload.data.employeeId,
     envelope,
-    wrappedKey: {
-      edk: payload.data.edk,
-      keyId: payload.data.keyId,
-      wrapAlg: payload.data.wrapAlg,
-    },
+    wrappedKeys,
   });
 
   if (!created.ok) {

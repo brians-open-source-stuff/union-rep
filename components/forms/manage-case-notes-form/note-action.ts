@@ -24,10 +24,15 @@ const ActionSchema = z.object({
   caseId: z.string().uuid(),
   employeeId: z.string().uuid(),
   envelope: z.string().min(1),
-  edk: z.string().min(1),
-  keyId: z.string().uuid(),
-  wrapAlg: z.literal("RSA-OAEP-256"),
+  wrappedKeys: z.string().min(1),
 });
+
+const WrappedKeysSchema = z.array(z.object({
+  userId: z.string().uuid(),
+  keyId: z.string().uuid(),
+  edk: z.string().min(1),
+  wrapAlg: z.literal("RSA-OAEP-256"),
+})).min(1);
 
 export default async function manageCaseNotesAction(
   _prevState: ManageCaseNotesFormState,
@@ -39,8 +44,10 @@ export default async function manageCaseNotesAction(
   }
 
   let envelope: EncryptedCaseEnvelopeV1;
+  let wrappedKeys: z.infer<typeof WrappedKeysSchema>;
   try {
     envelope = EnvelopeSchema.parse(JSON.parse(payload.data.envelope));
+    wrappedKeys = WrappedKeysSchema.parse(JSON.parse(payload.data.wrappedKeys));
   } catch {
     return { success: false, error: "Kunne ikke læse krypteret payload" };
   }
@@ -48,11 +55,7 @@ export default async function manageCaseNotesAction(
   const result = await updateEncryptedCase({
     caseId: payload.data.caseId,
     envelope,
-    wrappedKey: {
-      edk: payload.data.edk,
-      keyId: payload.data.keyId,
-      wrapAlg: payload.data.wrapAlg,
-    },
+    wrappedKeys,
   });
 
   if (!result.ok) {

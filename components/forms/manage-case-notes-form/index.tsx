@@ -24,6 +24,13 @@ function b64urlEncode(buf: ArrayBuffer | Uint8Array): string {
     .replace(/=+$/, "");
 }
 
+type RecipientPublicKey = {
+  keyId: string;
+  userId: string;
+  publicKey: JsonWebKey;
+  algorithm: "RSA-OAEP-256";
+};
+
 export default function ManageCaseNotesForm({
   decryptedCase,
   employeeId,
@@ -58,22 +65,22 @@ export default function ManageCaseNotesForm({
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const { getActiveDeviceKeyId, getDeviceKey } = await import("@/lib/device-crypto");
+    const { getActiveDeviceKeyId } = await import("@/lib/device-crypto");
     const { encryptCasePayload } = await import("@/lib/case-crypto");
 
     const activeKeyId = await getActiveDeviceKeyId();
     if (!activeKeyId) throw new Error("Ingen aktiv enhedsnøgle fundet");
 
-    const deviceKey = await getDeviceKey(activeKeyId);
-    if (!deviceKey) throw new Error("Kunne ikke hente enhedsnøgle");
+    const recipientsResponse = await fetch(`/api/keys/public?employeeId=${employeeId}`);
+    if (!recipientsResponse.ok) {
+      throw new Error("Kunne ikke hente modtagernes nøgler");
+    }
 
-    const publicKey = await crypto.subtle.importKey(
-      "jwk",
-      deviceKey.publicKeyJwk,
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      true,
-      ["wrapKey"]
-    );
+    const recipientsPayload = await recipientsResponse.json() as { keys: RecipientPublicKey[] };
+    const recipientKeys = recipientsPayload.keys.filter((key) => key.algorithm === "RSA-OAEP-256");
+    if (recipientKeys.length === 0) {
+      throw new Error("Ingen aktive modtagernøgler fundet");
+    }
 
     const cek = await crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
@@ -94,16 +101,35 @@ export default function ManageCaseNotesForm({
       { employeeId, keyVersion: 1, kid: activeKeyId, cek }
     );
 
-    const wrapped = await crypto.subtle.wrapKey("raw", cek, publicKey, { name: "RSA-OAEP" });
-    const edk = b64urlEncode(wrapped);
+    const wrappedKeys = await Promise.all(
+      recipientKeys.map(async (recipient) => {
+        const publicKey = await crypto.subtle.importKey(
+          "jwk",
+          recipient.publicKey,
+          { name: "RSA-OAEP", hash: "SHA-256" },
+          true,
+          ["wrapKey"],
+        );
+
+        const wrapped = await crypto.subtle.wrapKey("raw", cek, publicKey, { name: "RSA-OAEP" });
+        return {
+          userId: recipient.userId,
+          keyId: recipient.keyId,
+          edk: b64urlEncode(wrapped),
+          wrapAlg: "RSA-OAEP-256" as const,
+        };
+      }),
+    );
+
+    if (!wrappedKeys.some((wrappedKey) => wrappedKey.keyId === activeKeyId)) {
+      throw new Error("Din aktive enhedsnøgle mangler i modtagerlisten");
+    }
 
     const fd = new FormData();
     fd.set("caseId", decryptedCase.id);
     fd.set("employeeId", employeeId);
     fd.set("envelope", JSON.stringify(envelope));
-    fd.set("edk", edk);
-    fd.set("keyId", activeKeyId);
-    fd.set("wrapAlg", "RSA-OAEP-256");
+    fd.set("wrappedKeys", JSON.stringify(wrappedKeys));
 
     startTransition(() => {
       formAction(fd);
