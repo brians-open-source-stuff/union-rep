@@ -113,3 +113,13 @@ export type CaseAadV1 = {
 	keyVersion: number;
 	kid: string;
 };
+
+export type EmployeeSalary = {
+	year: Date;
+	employeeId: string;
+	qualification: number;
+	function: number;
+	bonus: number;
+	retention_bonus: number;
+	total_approved: number;
+};
