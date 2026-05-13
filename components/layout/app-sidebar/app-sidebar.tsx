@@ -42,6 +42,7 @@ const navItemsConfig: NavSection[] = [
 			{ title: "Ledere", url: "/settings/managers", requiresPermissions: ["manager:read"] },
 			{ title: "Afdelinger", url: "/settings/departments", requiresPermissions: ["department:read"] },
 			{ title: "Sessioner", url: "/settings/sessions", requiresPermissions: ["session:read"] },
+			{ title: "Nøgler", url: "/settings/keys", requiresPermissions: ["key:read"] },
 		],
 	},
 	{

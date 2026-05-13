@@ -1,6 +1,6 @@
 import z from "zod";
 
-type Entity = "employee" | "manager" | "user" | "department" | "role" | "permission" | "session";
+type Entity = "employee" | "manager" | "user" | "department" | "role" | "permission" | "session" | "key";
 type Action = "create" | "read" | "update" | "delete";
 
 export const PERMISSIONS = [
@@ -26,6 +26,8 @@ export const PERMISSIONS = [
 	"permission:read",
 	"session:read",
 	"session:delete",
+	"key:read",
+	"key:update"
 ] as const;
 
 export const PermissionSchema = z.enum(PERMISSIONS);

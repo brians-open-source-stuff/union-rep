@@ -144,6 +144,10 @@ const data = {
           title: "Limits",
           url: "#",
         },
+        {
+          title: "Key Management",
+          url: "/settings/keys",
+        },
       ],
     },
   ],
