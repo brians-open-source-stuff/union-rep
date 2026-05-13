@@ -2,21 +2,14 @@ import "server-only";
 import prisma from "@/config/prisma";
 import { getCurrentSession } from "./session";
 import { can } from "@/lib/utils";
-import { EncryptedCaseEnvelopeV1 } from "@/types";
+import { EncryptedSalaryEnvelopeV1, EncryptedSalaryForClient } from "@/types";
 import { getIP } from "@/lib/ip";
 import { logAuditEvent } from "./audit-log-dto";
 
-export type EncryptedCaseForClient = {
-  id: string;
+export type CreateEncryptedSalaryDtoInput = {
   employeeId: string;
-  createdAt: Date;
-  envelope: EncryptedCaseEnvelopeV1;
-  wrappedKey: { edk: string; wrapAlg: string; keyId: string } | null;
-};
-
-export type CreateEncryptedCaseDtoInput = {
-  employeeId: string;
-  envelope: EncryptedCaseEnvelopeV1;
+  year: number;
+  envelope: EncryptedSalaryEnvelopeV1;
   wrappedKeys: Array<{
     userId: string;
     edk: string;
@@ -25,12 +18,12 @@ export type CreateEncryptedCaseDtoInput = {
   }>;
 };
 
-export type CreateEncryptedCaseDtoResult = {
+export type CreateEncryptedSalaryDtoResult = {
   ok: boolean;
   reason?: string;
 };
 
-export async function getCasesForEmployee(employeeId: string): Promise<EncryptedCaseForClient[]> {
+export async function getSalariesForEmployee(employeeId: string): Promise<EncryptedSalaryForClient[]> {
   const session = await getCurrentSession();
   if (!session) return [];
   if (!can(session.user, "employee:read")) return [];
@@ -42,11 +35,12 @@ export async function getCasesForEmployee(employeeId: string): Promise<Encrypted
     });
     const deviceKeyIds = deviceKeys.map((k) => k.keyId);
 
-    const cases = await prisma.case.findMany({
+    const salaries = await prisma.salary.findMany({
       where: { employeeId },
       select: {
         id: true,
         employeeId: true,
+        year: true,
         createdAt: true,
         payload: true,
         keyEnvelopes: {
@@ -55,7 +49,7 @@ export async function getCasesForEmployee(employeeId: string): Promise<Encrypted
           take: 1,
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { year: "desc" },
     });
 
     await logAuditEvent({
@@ -67,16 +61,17 @@ export async function getCasesForEmployee(employeeId: string): Promise<Encrypted
       success: true,
     });
 
-    return cases.map((c) => ({
-      id: c.id,
-      employeeId: c.employeeId,
-      createdAt: c.createdAt,
-      envelope: c.payload as unknown as EncryptedCaseEnvelopeV1,
-      wrappedKey: c.keyEnvelopes[0]
+    return salaries.map((s) => ({
+      id: s.id,
+      employeeId: s.employeeId,
+      year: s.year,
+      createdAt: s.createdAt,
+      envelope: s.payload as unknown as EncryptedSalaryEnvelopeV1,
+      wrappedKey: s.keyEnvelopes[0]
         ? {
-          edk: c.keyEnvelopes[0].edk,
-          wrapAlg: c.keyEnvelopes[0].wrapAlg,
-          keyId: c.keyEnvelopes[0].recipientKeyId,
+          edk: s.keyEnvelopes[0].edk,
+          wrapAlg: s.keyEnvelopes[0].wrapAlg,
+          keyId: s.keyEnvelopes[0].recipientKeyId,
         }
         : null,
     }));
@@ -90,16 +85,16 @@ export async function getCasesForEmployee(employeeId: string): Promise<Encrypted
       success: false,
     });
 
-    console.error("getCasesForEmployee failed", error);
+    console.error("getSalariesForEmployee failed", error);
     return [];
   }
 }
 
-export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): Promise<CreateEncryptedCaseDtoResult> {
+export async function createEncryptedSalary(input: CreateEncryptedSalaryDtoInput): Promise<CreateEncryptedSalaryDtoResult> {
   const session = await getCurrentSession();
   if (!session) return { ok: false, reason: "Ingen aktiv session" };
   if (!can(session.user, "employee:create") && !can(session.user, "employee:update")) {
-    return { ok: false, reason: "Mangler rettighed: employee:create" };
+    return { ok: false, reason: "Mangler rettighed: employee:create eller employee:update" };
   }
 
   if (input.wrappedKeys.length === 0) {
@@ -107,9 +102,10 @@ export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): P
   }
 
   try {
-    const created = await prisma.case.create({
+    const created = await prisma.salary.create({
       data: {
         employeeId: input.employeeId,
+        year: input.year,
         keyVersion: input.envelope.keyVersion,
         payload: input.envelope,
         keyEnvelopes: {
@@ -147,14 +143,14 @@ export async function createEncryptedCase(input: CreateEncryptedCaseDtoInput): P
       success: false,
     });
 
-    console.error("createEncryptedCase failed", error);
+    console.error("createEncryptedSalary failed", error);
     return { ok: false, reason: "Databasefejl ved oprettelse" };
   }
 }
 
-export type UpdateEncryptedCaseDtoInput = {
-  caseId: string;
-  envelope: EncryptedCaseEnvelopeV1;
+export type UpdateEncryptedSalaryDtoInput = {
+  salaryId: string;
+  envelope: EncryptedSalaryEnvelopeV1;
   wrappedKeys: Array<{
     userId: string;
     edk: string;
@@ -163,7 +159,7 @@ export type UpdateEncryptedCaseDtoInput = {
   }>;
 };
 
-export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): Promise<CreateEncryptedCaseDtoResult> {
+export async function updateEncryptedSalary(input: UpdateEncryptedSalaryDtoInput): Promise<CreateEncryptedSalaryDtoResult> {
   const session = await getCurrentSession();
   if (!session) return { ok: false, reason: "Ingen aktiv session" };
   if (!can(session.user, "employee:update")) {
@@ -175,37 +171,32 @@ export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): P
   }
 
   try {
-    await prisma.$transaction([
-      prisma.case.update({
-        where: { id: input.caseId },
-        data: {
-          payload: input.envelope,
-          keyVersion: input.envelope.keyVersion,
+    await prisma.salary.update({
+      where: { id: input.salaryId },
+      data: {
+        payload: input.envelope,
+        keyEnvelopes: {
+          deleteMany: {},
+          createMany: {
+            data: input.wrappedKeys.map((wrappedKey) => ({
+              recipientUserId: wrappedKey.userId,
+              recipientKeyId: wrappedKey.keyId,
+              wrapAlg: wrappedKey.wrapAlg,
+              edk: wrappedKey.edk,
+            })),
+            skipDuplicates: true,
+          },
         },
-      }),
-      prisma.caseKeyEnvelope.deleteMany({
-        where: {
-          caseId: input.caseId,
-        },
-      }),
-      prisma.caseKeyEnvelope.createMany({
-        data: input.wrappedKeys.map((wrappedKey) => ({
-          caseId: input.caseId,
-          recipientUserId: wrappedKey.userId,
-          recipientKeyId: wrappedKey.keyId,
-          wrapAlg: wrappedKey.wrapAlg,
-          edk: wrappedKey.edk,
-        })),
-        skipDuplicates: true,
-      }),
-    ]);
+      },
+      select: { id: true },
+    });
 
     await logAuditEvent({
       userId: session.user.id,
       sessionId: session.sessionId,
       ipAddress: await getIP(),
       action: "update",
-      targetResourceId: input.caseId,
+      targetResourceId: input.salaryId,
       success: true,
     });
 
@@ -216,11 +207,11 @@ export async function updateEncryptedCase(input: UpdateEncryptedCaseDtoInput): P
       sessionId: session.sessionId,
       ipAddress: await getIP(),
       action: "update",
-      targetResourceId: input.caseId,
+      targetResourceId: input.salaryId,
       success: false,
     });
 
-    console.error("updateEncryptedCase failed", error);
+    console.error("updateEncryptedSalary failed", error);
     return { ok: false, reason: "Databasefejl ved opdatering" };
   }
 }

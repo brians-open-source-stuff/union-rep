@@ -1,18 +1,22 @@
 import EditEmployeeForm from "@/components/forms/edit-employee-form";
 import CreateCaseForm from "@/components/forms/create-case-form";
+import CreateSalaryForm from "@/components/forms/create-salary-form";
 import ModalDialog from "@/components/layout/modal-dialog";
 import CaseList from "@/components/layout/case-list";
+import SalaryList from "@/components/layout/salary-list";
 import { getSingleEmployee } from "@/data/employee-dto";
 import { getCasesForEmployee } from "@/data/case-dto";
+import { getSalariesForEmployee } from "@/data/salary-dto";
 import { getCurrentSession } from "@/data/session";
 import { getManagers } from "@/data/manager-dto";
 import { notFound } from "next/navigation";
 
 export default async function EmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [employee, cases, currentSession, managers] = await Promise.all([
+  const [employee, cases, salaries, currentSession, managers] = await Promise.all([
     getSingleEmployee(id),
     getCasesForEmployee(id),
+    getSalariesForEmployee(id),
     getCurrentSession(),
     getManagers(),
   ]);
@@ -38,6 +42,15 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           <CreateCaseForm employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />
         </ModalDialog></h2>
         <CaseList cases={cases} employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />
+      </section>
+      <section className="mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Lønforhandlinger</h2>
+          <ModalDialog buttonText="Ny lønforhandling" buttonVariant="outline">
+            <CreateSalaryForm employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />
+          </ModalDialog>
+        </div>
+        <SalaryList salaries={salaries} />
       </section>
     </>
   );

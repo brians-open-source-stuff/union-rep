@@ -123,3 +123,45 @@ export type EmployeeSalary = {
 	retention_bonus: number;
 	total_approved: number;
 };
+
+export type SalaryNegotiationNote = {
+	createdAt: string;
+	createdBy: string;
+	content: string;
+};
+
+export type SalaryPayloadV1 = {
+	year: number;
+	qualification: number;
+	function: number;
+	bonus: number;
+	retention_bonus: number;
+	total_approved: number;
+	notes: SalaryNegotiationNote[];
+};
+
+export type EncryptedSalaryEnvelopeV1 = {
+	v: 1;
+	alg: "A256GCM";
+	keyVersion: number;
+	kid: string;
+	iv: string;
+	ct: string;
+	aad: string;
+};
+
+export type SalaryAadV1 = {
+	kind: "employee-salary";
+	employeeId: string;
+	keyVersion: number;
+	kid: string;
+};
+
+export type EncryptedSalaryForClient = {
+	id: string;
+	employeeId: string;
+	year: number;
+	createdAt: Date;
+	envelope: EncryptedSalaryEnvelopeV1;
+	wrappedKey: { edk: string; wrapAlg: string; keyId: string } | null;
+};

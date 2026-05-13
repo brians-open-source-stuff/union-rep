@@ -17,11 +17,12 @@ model User {
   password String
   name     String
 
-  roles         Role[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
-  managerAccess UserManagerAccess[]
-  deviceKeys    UserDeviceKey[]
+  roles              Role[]
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  managerAccess      UserManagerAccess[]
+  deviceKeys         UserDeviceKey[]
+  salaryKeyEnvelopes SalaryKeyEnvelope[] @relation("SalaryKeyEnvelopes")
 
   @@index([email])
   @@schema("app")
@@ -63,8 +64,8 @@ model Employee {
 
   departments Department[]
   managers    Manager[]
-  salaries    Salary?
   cases       Case[]
+  salaries    Salary[]     @relation("EmployeeSalaries")
 
   @@index([name])
   @@schema("app")
@@ -105,15 +106,36 @@ model Department {
 
 model Salary {
   id         String   @id @default(uuid())
-  payload    Bytes
+  employeeId String
+  year       Int
   keyVersion Int      @default(1)
+  payload    Json
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  employeeId String   @unique
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee     Employee            @relation("EmployeeSalaries", fields: [employeeId], references: [id], onDelete: Cascade)
+  keyEnvelopes SalaryKeyEnvelope[]
 
+  @@unique([employeeId, year])
   @@index([employeeId])
+  @@schema("app")
+}
+
+model SalaryKeyEnvelope {
+  id              String   @id @default(cuid())
+  salaryId        String
+  recipientUserId String
+  recipientKeyId  String
+  wrapAlg         String
+  edk             String
+  createdAt       DateTime @default(now())
+
+  salary Salary @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  user   User   @relation("SalaryKeyEnvelopes", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([salaryId, recipientKeyId])
+  @@index([salaryId])
+  @@index([recipientUserId])
   @@schema("app")
 }
 

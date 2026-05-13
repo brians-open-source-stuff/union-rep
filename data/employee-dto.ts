@@ -62,48 +62,70 @@ export async function getEmployees() {
   const currentSession = await getCurrentSession();
   if (!currentSession) return [];
 
-  const { user } = currentSession;
+  const { sessionId, user } = currentSession;
 
   if (!can(user, "employee:read")) return null;
 
   const isAdmin = user.roles.includes("admin");
 
-  const employees = await prisma.employee.findMany({
-    where: isAdmin
-      ? undefined
-      : {
-        managers: {
-          some: {
-            OR: [
-              {
-                userManagerAccesses: {
-                  some: {
-                    userId: user.id,
+  try {
+    const employees = await prisma.employee.findMany({
+      where: isAdmin
+        ? undefined
+        : {
+          managers: {
+            some: {
+              OR: [
+                {
+                  userManagerAccesses: {
+                    some: {
+                      userId: user.id,
+                    },
                   },
                 },
-              },
-              {
-                subordinates: {
-                  some: {
-                    userManagerAccesses: {
-                      some: {
-                        userId: user.id,
+                {
+                  subordinates: {
+                    some: {
+                      userManagerAccesses: {
+                        some: {
+                          userId: user.id,
+                        },
                       },
                     },
                   },
                 },
-              },
-            ],
+              ],
+            },
           },
         },
+      include: {
+        departments: true,
+        managers: true,
       },
-    include: {
-      departments: true,
-      managers: true,
-    },
-  });
+    });
 
-  return employees;
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "read",
+      targetResourceId: "employee:list",
+      success: true,
+    });
+
+    return employees;
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "read",
+      targetResourceId: "employee:list",
+      success: false,
+    });
+
+    throw new Error("Error getting employees");
+  }
 }
 
 export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ ok: boolean; reason?: string }> {
