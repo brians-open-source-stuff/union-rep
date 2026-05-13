@@ -11,7 +11,7 @@ type Employee = {
 	employedAt: string | Date;
 	memberSince: string | Date | null;
 	departments: { id: string; name: string }[];
-	managers: { id: string; name: string }[];
+	managers: { id: string; name: string; chiefId: string | null }[];
 };
 
 type Props = {
@@ -146,20 +146,29 @@ export default function EmployeeTableClient({ employees }: Props) {
 				</TableHeader>
 				<TableBody>
 					{filteredEmployees.map((employee) => (
-						<TableRow key={employee.id}>
-							<TableCell><Link href={"/employees/" + employee.id}>{employee.name}</Link></TableCell>
-							<TableCell>{employee.departments[0]?.name ?? ""}</TableCell>
-							<TableCell>{employee.title}</TableCell>
-							<TableCell>{employee.managers[0]?.name ?? ""}</TableCell>
-							<TableCell>
-								{Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.employedAt))}
-							</TableCell>
-							<TableCell>
-								{employee.memberSince
-									? Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.memberSince))
-									: ""}
-							</TableCell>
-						</TableRow>
+						(() => {
+							const nearestManager =
+								employee.managers.find((manager) => manager.chiefId !== null) ??
+								employee.managers.find((manager) => manager.chiefId === null) ??
+								null;
+
+							return (
+								<TableRow key={employee.id}>
+									<TableCell><Link href={"/employees/" + employee.id}>{employee.name}</Link></TableCell>
+									<TableCell>{employee.departments[0]?.name ?? ""}</TableCell>
+									<TableCell>{employee.title}</TableCell>
+									<TableCell>{nearestManager?.name ?? "Ikke tildelt"}</TableCell>
+									<TableCell>
+										{Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.employedAt))}
+									</TableCell>
+									<TableCell>
+										{employee.memberSince
+											? Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.memberSince))
+											: ""}
+									</TableCell>
+								</TableRow>
+							);
+						})()
 					))}
 				</TableBody>
 			</Table>

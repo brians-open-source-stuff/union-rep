@@ -5,6 +5,18 @@ import { can } from "@/lib/utils";
 import { logAuditEvent } from "./audit-log-dto";
 import { getIP } from "@/lib/ip";
 
+export type UpdateEmployeeDtoInput = {
+  employeeId: string;
+  name: string;
+  title: string | null;
+  email: string | null;
+  emailAlt: string | null;
+  phone: string | null;
+  phoneAlt: string | null;
+  managerId: string | null;
+  chiefManagerId: string | null;
+};
+
 export async function getSingleEmployee(id: string) {
   const currentSession = await getCurrentSession();
   if (!currentSession) return null;
@@ -62,11 +74,26 @@ export async function getEmployees() {
       : {
         managers: {
           some: {
-            userManagerAccesses: {
-              some: {
-                userId: user.id,
+            OR: [
+              {
+                userManagerAccesses: {
+                  some: {
+                    userId: user.id,
+                  },
+                },
               },
-            },
+              {
+                subordinates: {
+                  some: {
+                    userManagerAccesses: {
+                      some: {
+                        userId: user.id,
+                      },
+                    },
+                  },
+                },
+              },
+            ],
           },
         },
       },
@@ -77,6 +104,60 @@ export async function getEmployees() {
   });
 
   return employees;
+}
+
+export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ ok: boolean; reason?: string }> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
+
+  const { sessionId, user } = currentSession;
+  if (!can(user, "employee:update")) {
+    return { ok: false, reason: "Mangler rettighed: employee:update" };
+  }
+
+  const managerIds = [input.managerId, input.chiefManagerId].filter(
+    (value): value is string => Boolean(value)
+  );
+  const uniqueManagerIds = [...new Set(managerIds)];
+
+  try {
+    await prisma.employee.update({
+      where: { id: input.employeeId },
+      data: {
+        name: input.name,
+        title: input.title,
+        email: input.email,
+        emailAlt: input.emailAlt,
+        phone: input.phone,
+        phoneAlt: input.phoneAlt,
+        managers: {
+          set: uniqueManagerIds.map((id) => ({ id })),
+        },
+      },
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "update",
+      targetResourceId: input.employeeId,
+      success: true,
+    });
+
+    return { ok: true };
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "update",
+      targetResourceId: input.employeeId,
+      success: false,
+    });
+
+    return { ok: false, reason: "Kunne ikke opdatere medarbejderen" };
+  }
 }
 
 export async function getEmployeeCounts() {
