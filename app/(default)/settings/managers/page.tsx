@@ -1,5 +1,14 @@
+import CreateManagerForm from "@/components/forms/create-manager-form";
+import EditManagerForm from "@/components/forms/edit-manager-form";
+import DeleteManagerForm from "@/components/forms/delete-manager-form";
+import ModalDialog from "@/components/layout/modal-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getManagers, ManagerSummary } from "@/data/manager-dto";
+import { getDepartmentOptions } from "@/data/department-dto";
+import { getManagersWithAuth, ManagerListItem } from "@/data/manager-dto";
+import { getCurrentSession } from "@/data/session";
+import { can } from "@/lib/utils";
+import { notFound } from "next/navigation";
+import { FiPenTool, FiTrash2 } from "react-icons/fi";
 
 type ManagerRow = {
 	id: string;
@@ -8,12 +17,11 @@ type ManagerRow = {
 	depth: number;
 	chiefName: string | null;
 	departments: string[];
-	chiefDepartments: string[];
 };
 
-function buildManagerRows(managers: ManagerSummary[]): ManagerRow[] {
+function buildManagerRows(managers: ManagerListItem[]): ManagerRow[] {
 	const byId = new Map(managers.map((manager) => [manager.id, manager]));
-	const childrenByChiefId = new Map<string, ManagerSummary[]>();
+	const childrenByChiefId = new Map<string, ManagerListItem[]>();
 
 	for (const manager of managers) {
 		if (!manager.chiefId || !byId.has(manager.chiefId)) continue;
@@ -34,7 +42,7 @@ function buildManagerRows(managers: ManagerSummary[]): ManagerRow[] {
 	const rows: ManagerRow[] = [];
 	const visited = new Set<string>();
 
-	function visit(manager: ManagerSummary, depth: number) {
+	function visit(manager: ManagerListItem, depth: number) {
 		if (visited.has(manager.id)) return;
 		visited.add(manager.id);
 
@@ -43,15 +51,10 @@ function buildManagerRows(managers: ManagerSummary[]): ManagerRow[] {
 			name: manager.name,
 			title: manager.title,
 			depth,
-			chiefName: manager.chiefId ? byId.get(manager.chiefId)?.name ?? null : null,
+			chiefName: manager.chiefName,
 			departments: manager.departments
 				.map((department) => department.name)
 				.sort((a, b) => a.localeCompare(b, "da")),
-			chiefDepartments: manager.chiefId
-				? (byId.get(manager.chiefId)?.departments ?? [])
-					.map((department) => department.name)
-					.sort((a, b) => a.localeCompare(b, "da"))
-				: [],
 		});
 
 		for (const subordinate of childrenByChiefId.get(manager.id) ?? []) {
@@ -63,7 +66,6 @@ function buildManagerRows(managers: ManagerSummary[]): ManagerRow[] {
 		visit(root, 0);
 	}
 
-	// Handle unexpected cycles/disconnected groups by appending remaining managers.
 	const remaining = managers
 		.filter((manager) => !visited.has(manager.id))
 		.sort((a, b) => a.name.localeCompare(b.name, "da"));
@@ -76,42 +78,85 @@ function buildManagerRows(managers: ManagerSummary[]): ManagerRow[] {
 }
 
 export default async function ManagersPage() {
-	const managers = await getManagers();
+	const [managers, currentSession] = await Promise.all([getManagersWithAuth(), getCurrentSession()]);
+
+	if (!currentSession || !can(currentSession.user, "manager:read")) {
+		notFound();
+	}
+
+	const canCreateManager = can(currentSession.user, "manager:create");
+	const canUpdateManager = can(currentSession.user, "manager:update");
+	const canDeleteManager = can(currentSession.user, "manager:delete");
+
+	const departmentOptions = (canCreateManager || canUpdateManager)
+		? await getDepartmentOptions()
+		: [];
+
 	const managerRows = buildManagerRows(managers);
+
+	const managerOptions = managers.map((m) => ({ id: m.id, name: m.name }));
 
 	return (
 		<>
-			<h2>Ledere</h2>
+			<h1>Administrer ledere</h1>
+			{canCreateManager ? (
+				<ModalDialog buttonText="Tilføj leder" buttonVariant="default">
+					<CreateManagerForm managerOptions={managerOptions} departmentOptions={departmentOptions} />
+				</ModalDialog>
+			) : null}
 			<Table>
 				<TableHeader>
 					<TableRow>
+						<TableHead></TableHead>
 						<TableHead>Navn</TableHead>
 						<TableHead>Titel</TableHead>
 						<TableHead>Afdeling</TableHead>
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{managerRows.map((manager) => (
-						<TableRow key={manager.id}>
-							<TableCell>
-								<span
-									className="inline-flex items-center"
-									style={{ paddingLeft: `${manager.depth * 1.25}rem` }}
-								>
-									{manager.depth > 0 && (
-										<span className="mr-2 text-muted-foreground" aria-hidden>
-											↳
-										</span>
-									)}
-									{manager.name}
-								</span>
-							</TableCell>
-							<TableCell>{manager.title}</TableCell>
-							<TableCell>{manager.departments.join(", ")}</TableCell>
-						</TableRow>
-					))}
+					{managerRows.map((row) => {
+						const manager = managers.find((m) => m.id === row.id);
+						return (
+							<TableRow key={row.id}>
+								<TableCell className="w-fit">
+									<div className="flex items-center gap-1">
+										{canUpdateManager && manager ? (
+											<ModalDialog buttonText={<FiPenTool />} buttonVariant="ghost">
+												<EditManagerForm
+													manager={manager}
+													managerOptions={managerOptions}
+													departmentOptions={departmentOptions}
+												/>
+											</ModalDialog>
+										) : null}
+										{canDeleteManager ? (
+											<ModalDialog buttonText={<FiTrash2 />} buttonVariant="ghost">
+												<DeleteManagerForm managerId={row.id} managerName={row.name} />
+											</ModalDialog>
+										) : null}
+									</div>
+								</TableCell>
+								<TableCell>
+									<span
+										className="inline-flex items-center"
+										style={{ paddingLeft: `${row.depth * 1.25}rem` }}
+									>
+										{row.depth > 0 && (
+											<span className="mr-2 text-muted-foreground" aria-hidden>
+												↳
+											</span>
+										)}
+										{row.name}
+									</span>
+								</TableCell>
+								<TableCell>{row.title}</TableCell>
+								<TableCell>{row.departments.join(", ")}</TableCell>
+							</TableRow>
+						);
+					})}
 				</TableBody>
 			</Table>
 		</>
 	);
 }
+
