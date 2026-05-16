@@ -46,15 +46,6 @@ const navItemsConfig: NavSection[] = [
 		],
 	},
 	{
-		title: "Test",
-		url: "/Test",
-		icon: <FiCoffee />,
-		items: [
-			{ title: "Test thing A", url: "/settings/roles", requiresPermissions: ["role:read", "permission:read"] },
-			{ title: "Test thing B", url: "/settings/users", requiresPermissions: ["user:update"] },
-		],
-	},
-	{
 		title: "Dokumentation",
 		url: "/docs",
 		icon: <FiBookOpen />,
