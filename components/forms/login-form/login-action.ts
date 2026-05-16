@@ -1,6 +1,7 @@
 "use server";
 
 import { logAuditEvent } from "@/data/audit-log-dto";
+import { createPendingMFASession } from "@/data/mfa-dto";
 import { createSession } from "@/data/session";
 import { getUser } from "@/data/user-dto";
 import { LoginFormState } from "@/types";
@@ -29,8 +30,6 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 		}
 	});
 
-	// TODO: Implement MFA
-
 	try {
 		const h = await headers();
 		const forwardedFor = h.get("x-forwarded-for");
@@ -39,7 +38,7 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 
 		const user = await getUser(validated.data.email);
 
-		if (!user || !user.validate(password as string)) {
+		if (!user || !await user.validate(password as string)) {
 			await logAuditEvent({
 				action: "login",
 				targetResourceId: validated.data.email,
@@ -58,9 +57,45 @@ export default async function loginAction(prevState: LoginFormState, formData: F
 			});
 		}
 
-		const sessionId = await createSession(user, ip_address);
+		if (user.mfaSetupComplete) {
+			const { pendingToken } = await createPendingMFASession(user.id);
 
-		// Successful login
+			const cookieStore = await cookies();
+			cookieStore.set("ur_mfa_pending", pendingToken, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === "production",
+				sameSite: "lax",
+				maxAge: 60 * 5,
+				path: "/",
+			});
+
+			await logAuditEvent({
+				userId: user.id,
+				action: "login",
+				targetResourceId: user.id,
+				ipAddress: ip_address,
+				success: false,
+			});
+
+			return {
+				success: true,
+				requiresMFA: true,
+				fields: { email: validated.data.email },
+				errors: {},
+			};
+		}
+
+		const sessionUser = {
+			id: user.id,
+			name: user.name,
+			needsPasswordChange: user.needsPasswordChange,
+			mfaSetupComplete: user.mfaSetupComplete,
+			roles: user.roles,
+			permissions: user.permissions,
+		};
+
+		const sessionId = await createSession(sessionUser, ip_address);
+
 		await logAuditEvent({
 			userId: user.id,
 			action: "login",

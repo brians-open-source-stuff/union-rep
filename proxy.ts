@@ -1,8 +1,8 @@
 import { hasSession } from "@/data/session";
 import { NextRequest, NextResponse } from "next/server";
 
-const publicRoutes = new Set(["/login"]);
-const passwordChangeExemptRoutes = new Set(["/profile", "/logout", "/login", "/api"]);
+const publicRoutes = new Set(["/login", "/otp"]);
+const passwordChangeExemptRoutes = new Set(["/profile", "/logout", "/login", "/api", "/otp"]);
 
 export async function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;

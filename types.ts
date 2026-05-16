@@ -43,12 +43,14 @@ export const SessionUserSchema = z.object({
 	roles: z.array(z.string()),
 	permissions: z.array(PermissionSchema),
 	needsPasswordChange: z.boolean().default(true),
+	mfaSetupComplete: z.boolean().default(false),
 });
 
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 
 export type LoginFormState = {
 	success: boolean;
+	requiresMFA?: boolean;
 	userId?: string;
 	fields: {
 		email: string;

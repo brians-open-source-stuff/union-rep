@@ -23,6 +23,12 @@ export default function LoginForm() {
 
 	useEffect(function () {
 		if (!formState.success) return;
+
+		if (formState.requiresMFA) {
+			router.push("/otp");
+			return;
+		}
+
 		if (!formState.userId) return;
 		const userId = formState.userId;
 
@@ -75,7 +81,7 @@ export default function LoginForm() {
 		}
 
 		enrollAndRedirect().catch(console.error);
-	}, [formState.success, formState.userId, router]);
+	}, [formState.success, formState.requiresMFA, formState.userId, router]);
 
 	return (
 		<div className="flex flex-col gap-6">
