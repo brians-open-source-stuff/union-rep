@@ -37,26 +37,30 @@ export default function AppHeader() {
 	const segments = pathname.split("/").filter(Boolean);
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState<Array<{ id: string; name: string }>>([]);
+	const trimmedQuery = query.trim();
 	const crumbs = segments.map((segment, index) => ({
 		label: formatSegment(segment),
 		href: `/${segments.slice(0, index + 1).join("/")}`,
 		isLast: index === segments.length - 1,
 	}));
+	const visibleResults = useMemo(
+		() => (trimmedQuery.length < 2 ? [] : results),
+		[trimmedQuery, results],
+	);
 
 	const resultMap = useMemo(
-		() => new Map(results.map((employee) => [employee.name, employee.id])),
-		[results],
+		() => new Map(visibleResults.map((employee) => [employee.name, employee.id])),
+		[visibleResults],
 	);
 
 	useEffect(() => {
-		if (query.trim().length < 2) {
-			setResults([]);
+		if (trimmedQuery.length < 2) {
 			return;
 		}
 
 		let isCancelled = false;
 		const timeout = setTimeout(async () => {
-			const found = await searchEmployeesAction(query);
+			const found = await searchEmployeesAction(trimmedQuery);
 			if (!isCancelled) {
 				setResults(found);
 			}
@@ -66,7 +70,7 @@ export default function AppHeader() {
 			isCancelled = true;
 			clearTimeout(timeout);
 		};
-	}, [query]);
+	}, [trimmedQuery]);
 
 	function handleSearchInput(value: string) {
 		setQuery(value);
@@ -123,7 +127,7 @@ export default function AppHeader() {
 					className="h-10"
 				/>
 				<datalist id="employee-search-datalist">
-					{results.map((employee) => (
+					{visibleResults.map((employee) => (
 						<option key={employee.id} value={employee.name} />
 					))}
 				</datalist>

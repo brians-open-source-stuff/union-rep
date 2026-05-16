@@ -11,6 +11,11 @@ export default function SalaryList({ salaries }: { salaries: EncryptedSalaryForC
 
   useEffect(() => {
     async function decryptAll() {
+      if (salaries.length === 0) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { unwrapDek } = await import("@/lib/device-crypto");
 
@@ -37,11 +42,7 @@ export default function SalaryList({ salaries }: { salaries: EncryptedSalaryForC
       }
     }
 
-    if (salaries.length > 0) {
-      decryptAll();
-    } else {
-      setLoading(false);
-    }
+    decryptAll();
   }, [salaries]);
 
   if (loading) return <p>Indlæser lønforhandlinger...</p>;

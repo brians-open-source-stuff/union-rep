@@ -441,12 +441,6 @@ export async function getEmployeeCounts() {
   };
 }
 
-type EmployeeMembershipPoint = {
-  month: Date;
-  employees: number;
-  members: number;
-};
-
 export async function getEmployeeMembershipTimeline() {
   const where = await getDashboardEmployeeWhere();
   if (!where) return [];
@@ -534,7 +528,11 @@ export async function getMemberBirthdaysThisWeek() {
     })
     .filter((row): row is { name: string; birthdate: Date; age: number; sortDate: Date } => row !== null)
     .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
-    .map(({ sortDate: _sortDate, ...row }) => row);
+    .map((row) => ({
+      name: row.name,
+      birthdate: row.birthdate,
+      age: row.age,
+    }));
 }
 
 export type UpcomingAnniversary = {
@@ -589,5 +587,9 @@ export async function getMemberEmploymentAnniversaries() {
     })
     .filter((row): row is { name: string; employedAt: Date; years: number; sortDate: Date } => row !== null)
     .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
-    .map(({ sortDate: _sortDate, ...row }) => row);
+    .map((row) => ({
+      name: row.name,
+      employedAt: row.employedAt,
+      years: row.years,
+    }));
 }

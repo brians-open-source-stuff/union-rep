@@ -5,7 +5,7 @@ import { NavUser } from "@/components/nav-user";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
 import { SessionUser } from "@/types";
 import Link from "next/link";
-import { FiBookOpen, FiCoffee, FiSettings, FiUmbrella, FiUsers } from "react-icons/fi"
+import { FiBookOpen, FiSettings, FiUmbrella, FiUsers } from "react-icons/fi"
 
 type SessionPermission = SessionUser["permissions"][number];
 
