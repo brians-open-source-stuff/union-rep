@@ -37,6 +37,16 @@ export default async function createUserAction(
 		return { success: false, error: "Ugyldige data" };
 	}
 
+	const roleIds = formData
+		.getAll("roleIds")
+		.filter((value): value is string => typeof value === "string")
+		.filter((value) => z.uuid().safeParse(value).success);
+
+	const selectedRoleIds = [...new Set(roleIds)];
+	if (selectedRoleIds.length === 0) {
+		return { success: false, error: "Vælg mindst én rolle" };
+	}
+
 	// Generate OTP secret
 	const otpsecret = generateSecret();
 
@@ -47,6 +57,9 @@ export default async function createUserAction(
 				email: payload.data.email,
 				password: payload.data.password,
 				otpsecret,
+				roles: {
+					connect: selectedRoleIds.map((id) => ({ id })),
+				},
 			},
 		});
 	} catch {

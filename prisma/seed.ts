@@ -70,7 +70,7 @@ async function main() {
 		},
 	});
 
-	function randomDate(start: Date, end: Date) {
+	/* function randomDate(start: Date, end: Date) {
 		const startTime = start.getTime();
 		const endTime = end.getTime();
 		return new Date(startTime + Math.random() * (endTime - startTime));
@@ -160,7 +160,7 @@ async function main() {
 			birthdate,
 			title,
 		};
-	});
+	}); */
 
 	// Reset fictional data
 	await prisma.employee.deleteMany({});
@@ -168,12 +168,12 @@ async function main() {
 	await prisma.manager.deleteMany({});
 	await prisma.department.deleteMany({});
 
-	const departments = await Promise.all(
+	/* const departments = await Promise.all(
 		departmentsData.map((department) => prisma.department.create({ data: department })),
-	);
+	); */
 
 	// Create chiefs for each department
-	const chiefsByDepartment = await Promise.all(
+	/* const chiefsByDepartment = await Promise.all(
 		chiefNamesByDepartment.map((chiefName, departmentIndex) =>
 			prisma.manager.create({
 				data: {
@@ -185,10 +185,10 @@ async function main() {
 				},
 			}),
 		),
-	);
+	); */
 
 	// Create regular managers and assign them to chiefs
-	const managersByDepartment = await Promise.all(
+	/* const managersByDepartment = await Promise.all(
 		managerNamesByDepartment.map(async (managerNames, departmentIndex) => {
 			const department = departments[departmentIndex];
 			const chief = chiefsByDepartment[departmentIndex];
@@ -208,10 +208,10 @@ async function main() {
 				),
 			);
 		}),
-	);
+	); */
 
 	// Create employees
-	const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
+	/* const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
 
 	for (let index = 0; index < employees.length; index += 1) {
 		const employee = employees[index];
@@ -234,10 +234,10 @@ async function main() {
 				},
 			},
 		});
-	}
+	} */
 
 	// Create union_rep users and grant them manager access
-	const unionRepUsers = [
+	/* const unionRepUsers = [
 		{ email: "hbp@unionrep.local", name: "Henrik Bjørn Pedersen" },
 		{ email: "be@unionrep.local", name: "Brian Emilius" },
 		{ email: "sap@unionrep.local", name: "Steen Aagaard" },
@@ -259,11 +259,11 @@ async function main() {
 				},
 			}),
 		),
-	);
+	); */
 
 	// Grant union rep access to managers
 	// Anna gets Copenhagen managers, Bent gets Odense, Charlotte gets Aarhus
-	for (let i = 0; i < createdUnionReps.length; i++) {
+	/* for (let i = 0; i < createdUnionReps.length; i++) {
 		const user = createdUnionReps[i];
 		const managerGroup = managersByDepartment[i];
 
@@ -284,14 +284,14 @@ async function main() {
 				});
 			}
 		}
-	}
+	} */
 
 	console.log("Seed complete");
 	console.log("Admin: admin@unionrep.local / changeme");
-	console.log("Union Reps:");
-	console.log("  - hbp@unionrep.local (H&T)");
-	console.log("  - be@unionrep.local (Byg/CMK)");
-	console.log("  - sap@unionrep.local (Vilvorde)");
+	//console.log("Union Reps:");
+	//console.log("  - hbp@unionrep.local (H&T)");
+	//console.log("  - be@unionrep.local (Byg/CMK)");
+	//console.log("  - sap@unionrep.local (Vilvorde)");
 }
 
 main()

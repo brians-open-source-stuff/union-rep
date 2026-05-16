@@ -11,8 +11,13 @@ type EditUserFormProps = {
   user: {
     id: string;
     name: string;
+    roleIds: string[];
     departmentIds: string[];
   };
+  roles: Array<{
+    id: string;
+    name: string;
+  }>;
   departments: Array<{
     id: string;
     name: string;
@@ -23,8 +28,9 @@ const initialState: UpdateUserFormState = {
   success: false,
 };
 
-export default function EditUserForm({ user, departments }: Readonly<EditUserFormProps>) {
+export default function EditUserForm({ user, roles, departments }: Readonly<EditUserFormProps>) {
   const [state, formAction, pending] = useActionState(updateUserAction, initialState);
+  const assignedRoleIds = new Set(user.roleIds);
   const assignedDepartmentIds = new Set(user.departmentIds);
 
   return (
@@ -38,6 +44,22 @@ export default function EditUserForm({ user, departments }: Readonly<EditUserFor
             <span>Nyt password</span>
             <Input type="password" name="password" placeholder="Lad feltet stå tomt for uændret" />
           </FieldLabel>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Roller</p>
+            <div className="grid gap-2 max-h-56 overflow-y-auto rounded-md border p-3">
+              {roles.map((role) => (
+                <label key={role.id} className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="roleIds"
+                    value={role.id}
+                    defaultChecked={assignedRoleIds.has(role.id)}
+                  />
+                  <span>{role.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2">
             <p className="text-sm font-medium">Afdelinger</p>
             <div className="grid gap-2 max-h-56 overflow-y-auto rounded-md border p-3">

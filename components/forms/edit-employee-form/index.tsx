@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import updateEmployeeAction, { type UpdateEmployeeFormState } from "./update-employee-action";
 
 type ManagerOption = {
@@ -41,13 +41,42 @@ export default function EditEmployeeForm({
 	managers: ReadonlyArray<ManagerOption>;
 }) {
 	const [state, formAction, pending] = useActionState(updateEmployeeAction, initialState);
+	const [name, setName] = useState(employee.name);
+	const [title, setTitle] = useState(employee.title ?? "");
+	const [email, setEmail] = useState(employee.email ?? "");
+	const [emailAlt, setEmailAlt] = useState(employee.emailAlt ?? "");
+	const [phone, setPhone] = useState(employee.phone ?? "");
+	const [phoneAlt, setPhoneAlt] = useState(employee.phoneAlt ?? "");
 	const currentManager = employee.managers.find((manager) => manager.chiefId !== null);
 	const currentChiefManager = employee.managers.find((manager) => manager.chiefId === null);
+	const [managerId, setManagerId] = useState(currentManager?.id ?? "");
+	const [chiefManagerId, setChiefManagerId] = useState(currentChiefManager?.id ?? "");
 	const chiefManagers = managers.filter((manager) => manager.chiefId === null);
 	const directManagers = managers.filter((manager) => manager.chiefId !== null);
 
+	useEffect(() => {
+		setName(employee.name);
+		setTitle(employee.title ?? "");
+		setEmail(employee.email ?? "");
+		setEmailAlt(employee.emailAlt ?? "");
+		setPhone(employee.phone ?? "");
+		setPhoneAlt(employee.phoneAlt ?? "");
+		setManagerId(currentManager?.id ?? "");
+		setChiefManagerId(currentChiefManager?.id ?? "");
+	}, [
+		employee.id,
+		employee.name,
+		employee.title,
+		employee.email,
+		employee.emailAlt,
+		employee.phone,
+		employee.phoneAlt,
+		currentManager?.id,
+		currentChiefManager?.id,
+	]);
+
 	return (
-		<form action={formAction} key={`employee-${employee.id}-${currentManager?.id ?? 'none'}-${currentChiefManager?.id ?? 'none'}`}>
+		<form action={formAction}>
 			<input type="hidden" name="employeeId" value={employee.id} />
 			<DialogHeader>
 				<DialogTitle>Rediger staminfo</DialogTitle>
@@ -55,31 +84,46 @@ export default function EditEmployeeForm({
 				<FieldGroup>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Medarbejders navn</span>
-						<Input type="text" name="name" defaultValue={employee.name} />
+						<Input type="text" name="name" value={name} onChange={(event) => setName(event.target.value)} />
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Titel</span>
-						<Input type="text" name="title" defaultValue={employee.title ?? ""} />
+						<Input type="text" name="title" value={title} onChange={(event) => setTitle(event.target.value)} />
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Email</span>
-						<Input type="email" name="email" defaultValue={employee.email ?? ""} />
+						<Input type="email" name="email" value={email} onChange={(event) => setEmail(event.target.value)} />
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Alternativ email</span>
-						<Input type="email" name="emailAlt" defaultValue={employee.emailAlt ?? ""} />
+						<Input
+							type="email"
+							name="emailAlt"
+							value={emailAlt}
+							onChange={(event) => setEmailAlt(event.target.value)}
+						/>
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Telefon</span>
-						<Input type="tel" name="phone" defaultValue={employee.phone ?? ""} />
+						<Input type="tel" name="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Alternativ telefon</span>
-						<Input type="tel" name="phoneAlt" defaultValue={employee.phoneAlt ?? ""} />
+						<Input
+							type="tel"
+							name="phoneAlt"
+							value={phoneAlt}
+							onChange={(event) => setPhoneAlt(event.target.value)}
+						/>
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Manager</span>
-						<select name="managerId" defaultValue={currentManager?.id ?? ""} className="h-9 w-full rounded-md border px-2">
+						<select
+							name="managerId"
+							value={managerId}
+							onChange={(event) => setManagerId(event.target.value)}
+							className="h-9 w-full rounded-md border px-2"
+						>
 							<option value="">Ingen</option>
 							{directManagers.map((manager) => (
 								<option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>
@@ -88,7 +132,12 @@ export default function EditEmployeeForm({
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
 						<span>Chefleder</span>
-						<select name="chiefManagerId" defaultValue={currentChiefManager?.id ?? ""} className="h-9 w-full rounded-md border px-2">
+						<select
+							name="chiefManagerId"
+							value={chiefManagerId}
+							onChange={(event) => setChiefManagerId(event.target.value)}
+							className="h-9 w-full rounded-md border px-2"
+						>
 							<option value="">Ingen</option>
 							{chiefManagers.map((manager) => (
 								<option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>

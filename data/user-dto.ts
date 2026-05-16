@@ -11,11 +11,17 @@ export type UserListItem = {
 	id: string;
 	name: string;
 	roles: string[];
+	roleIds: string[];
 	departments: string[];
 	departmentIds: string[];
 };
 
 export type UserDepartmentOption = {
+	id: string;
+	name: string;
+};
+
+export type UserRoleOption = {
 	id: string;
 	name: string;
 };
@@ -32,6 +38,7 @@ export async function getUsers(): Promise<UserListItem[]> {
 			name: true,
 			roles: {
 				select: {
+					id: true,
 					name: true,
 				},
 			},
@@ -59,6 +66,7 @@ export async function getUsers(): Promise<UserListItem[]> {
 		id: user.id,
 		name: user.name,
 		roles: user.roles.map((role) => role.name).sort((a, b) => a.localeCompare(b, "da")),
+		roleIds: user.roles.map((role) => role.id).sort((a, b) => a.localeCompare(b, "da")),
 		departments: [
 			...new Set(
 				user.managerAccess
@@ -72,6 +80,25 @@ export async function getUsers(): Promise<UserListItem[]> {
 				.map((department) => department.id),
 		)].sort((a, b) => a.localeCompare(b, "da")),
 	}));
+}
+
+export async function getUserRoleOptions(): Promise<UserRoleOption[]> {
+	const session = await getCurrentSession();
+	if (!session) return [];
+
+	if (!can(session.user, "user:update")) return [];
+
+	const roles = await prisma.role.findMany({
+		select: {
+			id: true,
+			name: true,
+		},
+		orderBy: {
+			name: "asc",
+		},
+	});
+
+	return roles;
 }
 
 export async function getUserDepartmentOptions(): Promise<UserDepartmentOption[]> {

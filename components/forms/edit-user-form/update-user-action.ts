@@ -39,8 +39,18 @@ export default async function updateUserAction(
     .filter((value): value is string => typeof value === "string")
     .filter((value) => z.uuid().safeParse(value).success);
 
+  const roleIds = formData
+    .getAll("roleIds")
+    .filter((value): value is string => typeof value === "string")
+    .filter((value) => z.uuid().safeParse(value).success);
+
   const selectedDepartmentIds = [...new Set(departmentIds)];
+  const selectedRoleIds = [...new Set(roleIds)];
   const password = payload.data.password?.trim() ?? "";
+
+  if (selectedRoleIds.length === 0) {
+    return { success: false, error: "Vælg mindst én rolle" };
+  }
 
   if (password.length > 0 && password.length < 8) {
     return { success: false, error: "Nyt password skal være mindst 8 tegn" };
@@ -70,6 +80,9 @@ export default async function updateUserAction(
       },
       data: {
         ...(password.length > 0 ? { password, needsPasswordChange: true } : {}),
+        roles: {
+          set: selectedRoleIds.map((id) => ({ id })),
+        },
         managerAccess: {
           deleteMany: {},
           ...(managerIds.length > 0

@@ -4,19 +4,22 @@ import CreateUserForm from "@/components/forms/create-user-form";
 import DeleteUserForm from "@/components/forms/delete-user-form";
 import ModalDialog from "@/components/layout/modal-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUserDepartmentOptions, getUsers } from "@/data/user-dto";
+import { getUserDepartmentOptions, getUserRoleOptions, getUsers } from "@/data/user-dto";
 import { FiPenTool, FiTrash2, FiUserPlus } from "react-icons/fi";
 
 export default async function UsersPage() {
-	const users = await getUsers();
-	const departments = await getUserDepartmentOptions();
+	const [users, departments, roles] = await Promise.all([
+		getUsers(),
+		getUserDepartmentOptions(),
+		getUserRoleOptions(),
+	]);
 
 	return (
 		<>
 			<div className="flex items-center justify-between mb-4">
 				<h2>Brugere</h2>
 				<ModalDialog buttonText={<span className="flex items-center gap-2"><FiUserPlus /> Opret bruger</span>} buttonVariant="default">
-					<CreateUserForm />
+					<CreateUserForm roles={roles} />
 				</ModalDialog>
 			</div>
 			<Table>
@@ -34,7 +37,7 @@ export default async function UsersPage() {
 						<TableRow key={user.id}>
 							<TableCell className="w-fit">
 								<ModalDialog buttonText={<FiPenTool />} buttonVariant="ghost">
-									<EditUserForm user={user} departments={departments} />
+									<EditUserForm user={user} departments={departments} roles={roles} />
 								</ModalDialog>
 							</TableCell>
 							<TableCell>{user.name}</TableCell>
