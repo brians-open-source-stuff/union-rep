@@ -109,7 +109,6 @@ export async function getUser(email: string) {
 						permissions: true,
 					},
 				},
-				sessions: true,
 			},
 		});
 

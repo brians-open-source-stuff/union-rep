@@ -69,7 +69,7 @@ export default async function updateUserAction(
         id: payload.data.userId,
       },
       data: {
-        ...(password.length > 0 ? { password } : {}),
+        ...(password.length > 0 ? { password, needsPasswordChange: true } : {}),
         managerAccess: {
           deleteMany: {},
           ...(managerIds.length > 0

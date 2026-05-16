@@ -1,10 +1,10 @@
 import ProfileForm from "@/components/forms/profile-form";
-import { getCurrentSession } from "@/data/session";
+import { getCurrentUser } from "@/data/user-dto";
 import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
-	const session = await getCurrentSession();
-	if (!session) {
+	const user = await getCurrentUser();
+	if (!user) {
 		redirect("/login");
 	}
 
@@ -14,7 +14,7 @@ export default async function ProfilePage() {
 				<h2>Profil</h2>
 				<p className="text-sm text-muted-foreground">Rediger dit navn og din adgangskode.</p>
 			</div>
-			<ProfileForm key={session.user.name} name={session.user.name} />
+			<ProfileForm key={user.name} name={user.name} needsPasswordChange={user.needsPasswordChange} />
 		</div>
 	);
 }
