@@ -298,11 +298,71 @@ export async function deleteEmployee(employeeId: string): Promise<EmployeeMutati
   }
 }
 
+async function getDashboardEmployeeWhere() {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return null;
+
+  const { user } = currentSession;
+  if (!can(user, "employee:read")) return null;
+
+  if (user.roles.includes("admin")) {
+    return {};
+  }
+
+  const access = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      managerAccess: {
+        select: {
+          manager: {
+            select: {
+              departments: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const departmentIds = [...new Set(
+    (access?.managerAccess ?? [])
+      .flatMap((entry) => entry.manager.departments)
+      .map((department) => department.id),
+  )];
+
+  if (departmentIds.length === 0) {
+    return { id: { in: [] as string[] } };
+  }
+
+  return {
+    departments: {
+      some: {
+        id: {
+          in: departmentIds,
+        },
+      },
+    },
+  };
+}
+
 export async function getEmployeeCounts() {
+  const where = await getDashboardEmployeeWhere();
+  if (!where) {
+    return {
+      totalEmployees: 0,
+      members: 0,
+    };
+  }
+
   const [totalEmployees, members] = await Promise.all([
-    prisma.employee.count(),
+    prisma.employee.count({ where }),
     prisma.employee.count({
       where: {
+        ...where,
         memberSince: {
           not: null,
         },
@@ -323,40 +383,36 @@ type EmployeeMembershipPoint = {
 };
 
 export async function getEmployeeMembershipTimeline() {
-  const rows = await prisma.$queryRaw<EmployeeMembershipPoint[]>`
-    WITH bounds AS (
-  SELECT
-    (date_trunc('month', CURRENT_DATE) - interval '23 months')::date AS start_month,
-    date_trunc('month', CURRENT_DATE)::date AS end_month
-),
-    months AS (
-      SELECT generate_series(start_month, end_month, interval '1 month')::date AS month
-      FROM bounds
-      WHERE start_month IS NOT NULL
-    )
-    SELECT
-      m.month,
-      (
-        SELECT COUNT(*)::int
-        FROM "app"."Employee" e
-        WHERE e."employedAt" < (m.month + interval '1 month')
-      ) AS employees,
-      (
-        SELECT COUNT(*)::int
-        FROM "app"."Employee" e
-        WHERE e."memberSince" IS NOT NULL
-          AND e."memberSince" < (m.month + interval '1 month')
-      ) AS members
-    FROM months m
-    ORDER BY m.month;
-  `;
+  const where = await getDashboardEmployeeWhere();
+  if (!where) return [];
 
-  return rows.map((r) => ({
-    month: r.month.toISOString().slice(0, 7), // YYYY-MM for Recharts X axis
-    employees: r.employees,
-    members: r.members,
-    membershipRate: r.employees === 0 ? 0 : r.members / r.employees,
-  }));
+  const employees = await prisma.employee.findMany({
+    where,
+    select: {
+      employedAt: true,
+      memberSince: true,
+    },
+  });
+
+  const now = new Date();
+  const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1));
+
+  const timeline = Array.from({ length: 24 }, (_, index) => {
+    const monthStart = new Date(Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + index, 1));
+    const monthEnd = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+
+    const employeeCount = employees.filter((employee) => employee.employedAt < monthEnd).length;
+    const memberCount = employees.filter((employee) => employee.memberSince !== null && employee.memberSince < monthEnd).length;
+
+    return {
+      month: monthStart.toISOString().slice(0, 7),
+      employees: employeeCount,
+      members: memberCount,
+      membershipRate: employeeCount === 0 ? 0 : memberCount / employeeCount,
+    };
+  });
+
+  return timeline;
 }
 
 export type BirthdayThisWeek = {
@@ -366,47 +422,54 @@ export type BirthdayThisWeek = {
 };
 
 export async function getMemberBirthdaysThisWeek() {
-  const rows = await prisma.$queryRaw<BirthdayThisWeek[]>`
-    WITH week_bounds AS (
-      SELECT
-        date_trunc('week', CURRENT_DATE)::date AS week_start,
-        (date_trunc('week', CURRENT_DATE) + interval '6 days')::date AS week_end
-    ),
-    candidates AS (
-      SELECT
-        e."name",
-        e."birthdate",
-        -- Handle Feb 29 birthdays in non-leap years by falling back to Feb 28
-        CASE
-          WHEN EXTRACT(MONTH FROM e."birthdate") = 2
-           AND EXTRACT(DAY FROM e."birthdate") = 29
-           AND NOT (
-             EXTRACT(YEAR FROM CURRENT_DATE)::int % 4 = 0 AND (
-               EXTRACT(YEAR FROM CURRENT_DATE)::int % 100 != 0 OR
-               EXTRACT(YEAR FROM CURRENT_DATE)::int % 400 = 0
-             )
-           )
-          THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 2, 28)
-          ELSE make_date(
-            EXTRACT(YEAR FROM CURRENT_DATE)::int,
-            EXTRACT(MONTH FROM e."birthdate")::int,
-            EXTRACT(DAY FROM e."birthdate")::int
-          )
-        END AS birthday_this_year
-      FROM "app"."Employee" e
-      WHERE e."memberSince" IS NOT NULL
-        AND e."birthdate" IS NOT NULL
-    )
-    SELECT
-      c."name",
-      c."birthdate",
-      (EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM c."birthdate"))::int AS age
-    FROM candidates c, week_bounds w
-    WHERE c.birthday_this_year BETWEEN w.week_start AND w.week_end
-    ORDER BY c.birthday_this_year;
-  `;
+  const where = await getDashboardEmployeeWhere();
+  if (!where) return [];
 
-  return rows;
+  const candidates = await prisma.employee.findMany({
+    where: {
+      ...where,
+      memberSince: { not: null },
+      birthdate: { not: null },
+    },
+    select: {
+      name: true,
+      birthdate: true,
+    },
+  });
+
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const day = todayUtc.getUTCDay();
+  const mondayDelta = day === 0 ? -6 : 1 - day;
+  const weekStart = new Date(todayUtc);
+  weekStart.setUTCDate(todayUtc.getUTCDate() + mondayDelta);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+
+  const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+
+  return candidates
+    .map((employee) => {
+      const birthdate = employee.birthdate;
+      if (!birthdate) return null;
+
+      const birthMonth = birthdate.getUTCMonth();
+      const birthDay = birthdate.getUTCDate();
+      const birthdayDay = birthMonth === 1 && birthDay === 29 && !isLeapYear(todayUtc.getUTCFullYear()) ? 28 : birthDay;
+      const birthdayThisYear = new Date(Date.UTC(todayUtc.getUTCFullYear(), birthMonth, birthdayDay));
+
+      if (birthdayThisYear < weekStart || birthdayThisYear > weekEnd) return null;
+
+      return {
+        name: employee.name,
+        birthdate,
+        age: todayUtc.getUTCFullYear() - birthdate.getUTCFullYear(),
+        sortDate: birthdayThisYear,
+      };
+    })
+    .filter((row): row is { name: string; birthdate: Date; age: number; sortDate: Date } => row !== null)
+    .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+    .map(({ sortDate: _sortDate, ...row }) => row);
 }
 
 export type UpcomingAnniversary = {
@@ -416,44 +479,50 @@ export type UpcomingAnniversary = {
 };
 
 export async function getMemberEmploymentAnniversaries() {
-  const rows = await prisma.$queryRaw<UpcomingAnniversary[]>`
-    WITH today AS (
-      SELECT CURRENT_DATE AS d
-    ),
-    candidates AS (
-      SELECT
-        e."name",
-        e."employedAt",
-        EXTRACT(YEAR FROM CURRENT_DATE)::int - EXTRACT(YEAR FROM e."employedAt")::int AS years_employed,
-        CASE
-          WHEN EXTRACT(MONTH FROM e."employedAt") = 2
-           AND EXTRACT(DAY FROM e."employedAt") = 29
-           AND NOT (
-             EXTRACT(YEAR FROM CURRENT_DATE)::int % 4 = 0 AND (
-               EXTRACT(YEAR FROM CURRENT_DATE)::int % 100 != 0 OR
-               EXTRACT(YEAR FROM CURRENT_DATE)::int % 400 = 0
-             )
-           )
-          THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 2, 28)
-          ELSE make_date(
-            EXTRACT(YEAR FROM CURRENT_DATE)::int,
-            EXTRACT(MONTH FROM e."employedAt")::int,
-            EXTRACT(DAY FROM e."employedAt")::int
-          )
-        END AS anniversary_this_year
-      FROM "app"."Employee" e
-      WHERE e."memberSince" IS NOT NULL
-        AND e."employedAt" IS NOT NULL
-    )
-    SELECT
-      c."name",
-      c."employedAt",
-      c.years_employed AS years
-    FROM candidates c, today t
-    WHERE c.years_employed IN (25, 40)
-      AND c.anniversary_this_year BETWEEN t.d AND (t.d + interval '30 days')
-    ORDER BY c.anniversary_this_year;
-  `;
+  const where = await getDashboardEmployeeWhere();
+  if (!where) return [];
 
-  return rows;
+  const candidates = await prisma.employee.findMany({
+    where: {
+      ...where,
+      memberSince: { not: null },
+    },
+    select: {
+      name: true,
+      employedAt: true,
+    },
+  });
+
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const windowEnd = new Date(todayUtc);
+  windowEnd.setUTCDate(todayUtc.getUTCDate() + 30);
+
+  const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+
+  return candidates
+    .map((employee) => {
+      const employedAt = employee.employedAt;
+      if (!employedAt) return null;
+
+      const years = todayUtc.getUTCFullYear() - employedAt.getUTCFullYear();
+      if (years !== 25 && years !== 40) return null;
+
+      const month = employedAt.getUTCMonth();
+      const day = employedAt.getUTCDate();
+      const anniversaryDay = month === 1 && day === 29 && !isLeapYear(todayUtc.getUTCFullYear()) ? 28 : day;
+      const anniversaryThisYear = new Date(Date.UTC(todayUtc.getUTCFullYear(), month, anniversaryDay));
+
+      if (anniversaryThisYear < todayUtc || anniversaryThisYear > windowEnd) return null;
+
+      return {
+        name: employee.name,
+        employedAt,
+        years,
+        sortDate: anniversaryThisYear,
+      };
+    })
+    .filter((row): row is { name: string; employedAt: Date; years: number; sortDate: Date } => row !== null)
+    .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+    .map(({ sortDate: _sortDate, ...row }) => row);
 }
