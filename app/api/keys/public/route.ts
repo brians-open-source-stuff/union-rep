@@ -5,7 +5,7 @@ import { z } from "zod";
 import { can } from "@/lib/utils";
 
 const UploadKeySchema = z.object({
-  keyId: z.string().uuid(),
+  keyId: z.uuid(),
   publicKeyJwk: z.record(z.string(), z.unknown()),
   algorithm: z.literal("RSA-OAEP-256"),
 });
