@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Fragment } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import searchEmployeesAction from "./search-employees-action";
 
 const SEGMENT_LABELS: Record<string, string> = {
 	settings: "Indstillinger",
@@ -31,22 +33,59 @@ function formatSegment(segment: string): string {
 
 export default function AppHeader() {
 	const pathname = usePathname();
+	const router = useRouter();
 	const segments = pathname.split("/").filter(Boolean);
+	const [query, setQuery] = useState("");
+	const [results, setResults] = useState<Array<{ id: string; name: string }>>([]);
 	const crumbs = segments.map((segment, index) => ({
 		label: formatSegment(segment),
 		href: `/${segments.slice(0, index + 1).join("/")}`,
 		isLast: index === segments.length - 1,
 	}));
 
+	const resultMap = useMemo(
+		() => new Map(results.map((employee) => [employee.name, employee.id])),
+		[results],
+	);
+
+	useEffect(() => {
+		if (query.trim().length < 2) {
+			setResults([]);
+			return;
+		}
+
+		let isCancelled = false;
+		const timeout = setTimeout(async () => {
+			const found = await searchEmployeesAction(query);
+			if (!isCancelled) {
+				setResults(found);
+			}
+		}, 180);
+
+		return () => {
+			isCancelled = true;
+			clearTimeout(timeout);
+		};
+	}, [query]);
+
+	function handleSearchInput(value: string) {
+		setQuery(value);
+		const employeeId = resultMap.get(value);
+		if (employeeId) {
+			router.push(`/employees/${employeeId}`);
+			setQuery("");
+		}
+	}
+
 	return (
-		<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-			<div className="flex items-center gap-2 px-4">
+		<header className="flex h-16 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+			<div className="flex min-w-0 items-center gap-2">
 				<SidebarTrigger className="-ml-1" />
 				<Separator
 					orientation="vertical"
 					className="mr-2 data-[orientation=vertical]:h-4"
 				/>
-				<Breadcrumb>
+				<Breadcrumb className="min-w-0">
 					<BreadcrumbList>
 						<BreadcrumbItem>
 							{crumbs.length === 0 ? (
@@ -71,6 +110,23 @@ export default function AppHeader() {
 						))}
 					</BreadcrumbList>
 				</Breadcrumb>
+			</div>
+			<div className="ml-auto w-full max-w-md">
+				<Input
+					type="search"
+					list="employee-search-datalist"
+					value={query}
+					onChange={(event) => handleSearchInput(event.currentTarget.value)}
+					onBlur={(event) => handleSearchInput(event.currentTarget.value)}
+					placeholder="Søg medarbejder..."
+					aria-label="Søg medarbejder"
+					className="h-10"
+				/>
+				<datalist id="employee-search-datalist">
+					{results.map((employee) => (
+						<option key={employee.id} value={employee.name} />
+					))}
+				</datalist>
 			</div>
 		</header>
 	);

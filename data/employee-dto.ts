@@ -205,6 +205,71 @@ export async function getEmployees() {
   }
 }
 
+export type EmployeeSearchItem = {
+  id: string;
+  name: string;
+};
+
+export async function searchEmployeesByName(query: string): Promise<EmployeeSearchItem[]> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return [];
+
+  const { user } = currentSession;
+  if (!can(user, "employee:read")) return [];
+
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) return [];
+
+  const isAdmin = user.roles.includes("admin");
+
+  const employees = await prisma.employee.findMany({
+    where: {
+      name: {
+        contains: normalizedQuery,
+        mode: "insensitive",
+      },
+      ...(isAdmin
+        ? {}
+        : {
+          managers: {
+            some: {
+              OR: [
+                {
+                  userManagerAccesses: {
+                    some: {
+                      userId: user.id,
+                    },
+                  },
+                },
+                {
+                  subordinates: {
+                    some: {
+                      userManagerAccesses: {
+                        some: {
+                          userId: user.id,
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        }),
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+    take: 12,
+  });
+
+  return employees;
+}
+
 export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ ok: boolean; reason?: string }> {
   const currentSession = await getCurrentSession();
   if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
