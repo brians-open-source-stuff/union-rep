@@ -2,7 +2,9 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { PERMISSIONS, DEFAULT_ROLE_DEFINITIONS } from "../types";
+
 import bcrypt from "bcrypt";
+import { generateSecret } from "otplib";
 
 const adapter = new PrismaPg({
 	connectionString: process.env.DATABASE_URL,
@@ -63,6 +65,7 @@ async function main() {
 			email: "admin@unionrep.local",
 			name: "System Admin",
 			password: await bcrypt.hash(process.env.DEFAULT_PASSWORD || "1234", 11),
+			otpsecret: generateSecret(),
 			roles: { connect: [{ name: "admin" }] },
 		},
 	});
@@ -251,6 +254,7 @@ async function main() {
 					email: userInfo.email,
 					name: userInfo.name,
 					password: await bcrypt.hash(process.env.DEFAULT_PASSWORD || "1234", 11),
+					otpsecret: generateSecret(),
 					roles: { connect: [{ name: "union_rep" }] },
 				},
 			}),

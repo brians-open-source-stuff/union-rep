@@ -17,6 +17,8 @@ model User {
   password            String
   name                String
   needsPasswordChange Boolean @default(true)
+  mfaSetupComplete    Boolean @default(false)
+  otpsecret           String
 
   roles              Role[]
   sessions           Session[]
