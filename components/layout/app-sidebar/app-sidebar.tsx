@@ -72,7 +72,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
 			<SidebarHeader>
 				<SidebarMenuItem>
 					<SidebarMenuButton render={<Link href="/" />}>
-						<FiUmbrella /> Union Rep
+						<FiUmbrella /> TR Overblik
 					</SidebarMenuButton>
 				</SidebarMenuItem>
 			</SidebarHeader>
