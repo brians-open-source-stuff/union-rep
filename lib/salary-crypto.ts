@@ -96,5 +96,6 @@ export async function decryptSalaryPayload(
 }
 
 export async function importAesKeyFromRaw(raw32: Uint8Array): Promise<CryptoKey> {
-  return await crypto.subtle.importKey("raw", raw32, "AES-GCM", false, ["encrypt", "decrypt"]);
+  const raw = toArrayBuffer(raw32);
+  return await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }

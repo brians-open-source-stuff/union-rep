@@ -19,6 +19,7 @@ export const PERMISSIONS = [
 	"user:create",
 	"user:read",
 	"user:update",
+	"user:delete",
 	"role:create",
 	"role:read",
 	"role:update",
