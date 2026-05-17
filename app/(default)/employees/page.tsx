@@ -7,6 +7,10 @@ import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+export const metadata = {
+  title: "Medarbejdere"
+}
+
 export default async function EmployeePage() {
   const [employees, currentSession] = await Promise.all([getEmployees(), getCurrentSession()]);
 

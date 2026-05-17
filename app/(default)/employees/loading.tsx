@@ -3,6 +3,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const ROW_COUNT = 8;
 
+export const metadata = {
+	title: "Medarbejdere"
+}
+
 export default function EmployeesLoading() {
 	return (
 		<div className="space-y-4">

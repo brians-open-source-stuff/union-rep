@@ -2,6 +2,10 @@ import MFASetupForm from "@/components/forms/mfa-setup-form";
 import { getMFASetupData } from "@/data/mfa-dto";
 import { redirect } from "next/navigation";
 
+export const metadata = {
+	title: "MFA Opsætning"
+}
+
 export default async function MFASetupPage() {
 	const data = await getMFASetupData();
 

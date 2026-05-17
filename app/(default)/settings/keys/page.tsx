@@ -8,6 +8,10 @@ import { getUserPrivateKeyFromIndexedDB, rewrapCaseWithAllKeys } from "@/lib/cli
 import { getActiveDeviceUser } from "@/lib/device-crypto";
 import type { CaseForRewrap, DeviceKeyForRewrap } from "@/lib/client-rewrap";
 
+export const metadata = {
+  title: "Nøgler"
+}
+
 type RewrapJob = {
   id: string;
   status: string;

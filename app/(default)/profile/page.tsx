@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+export const metadata = {
+	title: "Profil"
+}
+
 export default async function ProfilePage() {
 	const user = await getCurrentUser();
 	if (!user) {

@@ -9,6 +9,10 @@ import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { FiPenTool, FiTrash2 } from "react-icons/fi";
 
+export const metadata = {
+	title: "Roller"
+}
+
 export default async function RolesPage() {
 	const [roles, currentSession] = await Promise.all([getRoles(), getCurrentSession()]);
 

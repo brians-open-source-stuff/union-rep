@@ -7,6 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getUserDepartmentOptions, getUserRoleOptions, getUsers } from "@/data/user-dto";
 import { FiPenTool, FiTrash2, FiUserPlus } from "react-icons/fi";
 
+export const metadata = {
+	title: "Brugere"
+}
+
 export default async function UsersPage() {
 	const [users, departments, roles] = await Promise.all([
 		getUsers(),

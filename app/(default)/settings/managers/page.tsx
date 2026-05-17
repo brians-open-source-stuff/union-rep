@@ -10,6 +10,10 @@ import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { FiPenTool, FiTrash2 } from "react-icons/fi";
 
+export const metadata = {
+	title: "Ledere"
+}
+
 type ManagerRow = {
 	id: string;
 	name: string;
