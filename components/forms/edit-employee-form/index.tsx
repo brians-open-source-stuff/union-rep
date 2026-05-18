@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import updateEmployeeAction, { type UpdateEmployeeFormState } from "./update-employee-action";
 
 type ManagerOption = {
@@ -54,7 +54,7 @@ export default function EditEmployeeForm({
 	const chiefManagers = managers.filter((manager) => manager.chiefId === null);
 	const directManagers = managers.filter((manager) => manager.chiefId !== null);
 
-	useEffect(() => {
+	/* useEffect(() => {
 		setName(employee.name);
 		setTitle(employee.title ?? "");
 		setEmail(employee.email ?? "");
@@ -73,7 +73,7 @@ export default function EditEmployeeForm({
 		employee.phoneAlt,
 		currentManager?.id,
 		currentChiefManager?.id,
-	]);
+	]); */
 
 	return (
 		<form action={formAction}>
