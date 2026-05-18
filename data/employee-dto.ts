@@ -480,7 +480,7 @@ export type BirthdayThisWeek = {
   age: number;
 };
 
-export async function getMemberBirthdaysThisWeek() {
+export async function getMemberBirthdaysNext7Days() {
   const where = await getDashboardEmployeeWhere();
   if (!where) return [];
 
@@ -498,12 +498,8 @@ export async function getMemberBirthdaysThisWeek() {
 
   const today = new Date();
   const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const day = todayUtc.getUTCDay();
-  const mondayDelta = day === 0 ? -6 : 1 - day;
-  const weekStart = new Date(todayUtc);
-  weekStart.setUTCDate(todayUtc.getUTCDate() + mondayDelta);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  const windowEnd = new Date(todayUtc);
+  windowEnd.setUTCDate(todayUtc.getUTCDate() + 6);
 
   const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
@@ -512,19 +508,32 @@ export async function getMemberBirthdaysThisWeek() {
       const birthdate = employee.birthdate;
       if (!birthdate) return null;
 
-      const birthMonth = birthdate.getUTCMonth();
-      const birthDay = birthdate.getUTCDate();
-      const birthdayDay = birthMonth === 1 && birthDay === 29 && !isLeapYear(todayUtc.getUTCFullYear()) ? 28 : birthDay;
-      const birthdayThisYear = new Date(Date.UTC(todayUtc.getUTCFullYear(), birthMonth, birthdayDay));
+      let birthMonth = birthdate.getUTCMonth();
+      let birthDay = birthdate.getUTCDate();
 
-      if (birthdayThisYear < weekStart || birthdayThisYear > weekEnd) return null;
+      // Handle leap year birthdays
+      if (birthMonth === 1 && birthDay === 29 && !isLeapYear(todayUtc.getUTCFullYear())) {
+        birthDay = 28;
+      }
 
-      return {
-        name: employee.name,
-        birthdate,
-        age: todayUtc.getUTCFullYear() - birthdate.getUTCFullYear(),
-        sortDate: birthdayThisYear,
-      };
+      // Birthday this year
+      let birthdayThisYear = new Date(Date.UTC(todayUtc.getUTCFullYear(), birthMonth, birthDay));
+
+      // If birthday already passed in this window, check next year
+      if (birthdayThisYear < todayUtc) {
+        birthdayThisYear = new Date(Date.UTC(todayUtc.getUTCFullYear() + 1, birthMonth, birthDay));
+      }
+
+      // Check if birthday is within the next 7 days
+      if (birthdayThisYear >= todayUtc && birthdayThisYear <= windowEnd) {
+        return {
+          name: employee.name,
+          birthdate,
+          age: birthdayThisYear.getUTCFullYear() - birthdate.getUTCFullYear(),
+          sortDate: birthdayThisYear,
+        };
+      }
+      return null;
     })
     .filter((row): row is { name: string; birthdate: Date; age: number; sortDate: Date } => row !== null)
     .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
