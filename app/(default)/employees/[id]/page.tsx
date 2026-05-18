@@ -12,6 +12,28 @@ import { getCurrentSession } from "@/data/session";
 import { getManagers } from "@/data/manager-dto";
 import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import type { Metadata, ResolvingMetadata } from "next";
+
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export async function generateMetadata(
+  { params }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // read route params
+  const { id } = await params;
+
+  // fetch data
+  const employee = await getSingleEmployee(id);
+
+  if (!employee) notFound();
+
+  return {
+    title: employee.name,
+  }
+}
 
 export default async function EmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
