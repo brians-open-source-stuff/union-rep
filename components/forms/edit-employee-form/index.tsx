@@ -54,27 +54,6 @@ export default function EditEmployeeForm({
 	const chiefManagers = managers.filter((manager) => manager.chiefId === null);
 	const directManagers = managers.filter((manager) => manager.chiefId !== null);
 
-	/* useEffect(() => {
-		setName(employee.name);
-		setTitle(employee.title ?? "");
-		setEmail(employee.email ?? "");
-		setEmailAlt(employee.emailAlt ?? "");
-		setPhone(employee.phone ?? "");
-		setPhoneAlt(employee.phoneAlt ?? "");
-		setManagerId(currentManager?.id ?? "");
-		setChiefManagerId(currentChiefManager?.id ?? "");
-	}, [
-		employee.id,
-		employee.name,
-		employee.title,
-		employee.email,
-		employee.emailAlt,
-		employee.phone,
-		employee.phoneAlt,
-		currentManager?.id,
-		currentChiefManager?.id,
-	]); */
-
 	return (
 		<form action={formAction}>
 			<input type="hidden" name="employeeId" value={employee.id} />

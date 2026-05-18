@@ -43,7 +43,7 @@ export default function EditDepartmentForm({ department }: { department: Readonl
             <Input type="text" name="streetaddress2" defaultValue={department.streetaddress2 ?? ""} />
           </FieldLabel>
           <div className="flex gap-3">
-            <FieldLabel className="flex flex-col items-start flex-shrink-0">
+            <FieldLabel className="flex flex-col items-start shrink-0">
               <span>Postnummer</span>
               <Input type="number" name="zipcode" defaultValue={department.zipcode} required className="w-28" />
             </FieldLabel>
