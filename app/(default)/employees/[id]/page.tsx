@@ -12,15 +12,14 @@ import { getCurrentSession } from "@/data/session";
 import { getManagers } from "@/data/manager-dto";
 import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
-import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 
 type Props = {
   params: Promise<{ id: string }>
 }
 
 export async function generateMetadata(
-  { params }: Props,
-  parent: ResolvingMetadata
+  { params }: Props
 ): Promise<Metadata> {
   // read route params
   const { id } = await params;
