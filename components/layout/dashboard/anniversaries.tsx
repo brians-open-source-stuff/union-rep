@@ -7,8 +7,8 @@ export default function Anniversaries({ data }: { data: UpcomingAnniversary[] })
 			<ul>
 				{data.map(employee => (
 					<li key={employee.name}>
-						<p>{employee.name} fejrer {employee.years}</p>
-						<p>{Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(employee.employedAt)}</p>
+						<p className="font-bold">{employee.name} fejrer {employee.years} år</p>
+						<p>Ansat {Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(employee.employedAt)}</p>
 					</li>
 				))}
 			</ul>
