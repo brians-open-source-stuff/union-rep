@@ -55,18 +55,20 @@ model Permission {
 }
 
 model Employee {
-  id          String    @id @default(uuid())
-  name        String
-  employedAt  DateTime
-  lastContact DateTime?
-  memberSince DateTime?
-  birthdate   DateTime?
-  title       String?
-  email       String?
-  emailAlt    String?
-  phone       String?
-  phoneAlt    String?
-  gdprConsent DateTime?
+  id                String    @id @default(uuid())
+  name              String
+  employedAt        DateTime
+  employmentEndedAt DateTime?
+  anonymizedAt      DateTime?
+  lastContact       DateTime?
+  memberSince       DateTime?
+  birthdate         DateTime?
+  title             String?
+  email             String?
+  emailAlt          String?
+  phone             String?
+  phoneAlt          String?
+  gdprConsent       DateTime?
 
   departments Department[]
   managers    Manager[]
@@ -75,6 +77,7 @@ model Employee {
   salaries    Salary[]         @relation("EmployeeSalaries")
 
   @@index([name])
+  @@index([employmentEndedAt])
   @@schema("app")
 }
 

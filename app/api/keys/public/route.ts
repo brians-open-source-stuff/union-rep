@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       select: {
+        employmentEndedAt: true,
         departments: {
           select: {
             id: true,
@@ -102,6 +103,10 @@ export async function GET(req: NextRequest) {
 
     if (!employee) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    if (employee.employmentEndedAt) {
+      return NextResponse.json({ error: "Employee is no longer employed" }, { status: 400 });
     }
 
     const departmentIds = employee.departments.map((department) => department.id);

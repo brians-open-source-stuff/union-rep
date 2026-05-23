@@ -65,7 +65,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           </ModalDialog>
         ) : null}
         {canDeleteEmployee ? (
-          <ModalDialog buttonText="Slet medarbejder" buttonVariant="destructive">
+          <ModalDialog buttonText="Registrer fratraedelse" buttonVariant="destructive">
             <DeleteEmployeeForm employeeId={employee.id} employeeName={employee.name} />
           </ModalDialog>
         ) : null}

@@ -13,25 +13,30 @@ const initialState: DeleteEmployeeFormState = {
 
 export default function DeleteEmployeeForm({ employeeId, employeeName }: { employeeId: string; employeeName: string }) {
   const [state, formAction, pending] = useActionState(deleteEmployeeAction, initialState);
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form action={formAction}>
       <input type="hidden" name="employeeId" value={employeeId} />
       <DialogHeader>
-        <DialogTitle>Slet medarbejder</DialogTitle>
+        <DialogTitle>Registrer fratraedelse</DialogTitle>
         <DialogDescription>
-          Denne handling kan ikke fortrydes. Skriv SLET for at bekræfte sletning af {employeeName}.
+          Denne handling anonymiserer {employeeName} og sletter sager samt loenforhandlinger. Udfyld fratraedelsesdato og skriv FRATRAED for at bekraefte.
         </DialogDescription>
         <FieldGroup>
           <FieldLabel className="flex flex-col items-start">
-            <span>Bekraft med teksten SLET</span>
+            <span>Fratraedelsesdato</span>
+            <Input type="date" name="employmentEndedAt" required defaultValue={today} max={today} />
+          </FieldLabel>
+          <FieldLabel className="flex flex-col items-start">
+            <span>Bekraft med teksten FRATRAED</span>
             <Input type="text" name="confirmText" required />
           </FieldLabel>
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         </FieldGroup>
         <DialogFooter>
           <DialogClose render={<Button type="button" variant="outline">Annuller</Button>} />
-          <Button type="submit" variant="destructive" disabled={pending}>{pending ? "Sletter..." : "Slet medarbejder"}</Button>
+          <Button type="submit" variant="destructive" disabled={pending}>{pending ? "Gemmer..." : "Registrer fratraedelse"}</Button>
         </DialogFooter>
       </DialogHeader>
     </form>

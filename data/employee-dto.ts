@@ -41,6 +41,11 @@ export type EmployeeMutationResult = {
   employeeId?: string;
 };
 
+export type OffboardEmployeeDtoInput = {
+  employeeId: string;
+  employmentEndedAt: Date;
+};
+
 function activeAssignmentWhere(userId: string) {
   const now = new Date();
 
@@ -179,9 +184,10 @@ export async function getSingleEmployee(id: string) {
   if (!can(user, "employee:read")) return null;
 
   try {
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.employee.findFirst({
       where: {
-        id
+        id,
+        employmentEndedAt: null,
       },
       include: {
         assignments: {
@@ -237,8 +243,11 @@ export async function getEmployees() {
   try {
     const employees = await prisma.employee.findMany({
       where: isAdmin
-        ? undefined
-        : employeeAccessWhere(user.id),
+        ? { employmentEndedAt: null }
+        : {
+          employmentEndedAt: null,
+          ...employeeAccessWhere(user.id),
+        },
       include: {
         departments: true,
         managers: {
@@ -308,6 +317,7 @@ export async function searchEmployeesByName(query: string): Promise<EmployeeSear
 
   const employees = await prisma.employee.findMany({
     where: {
+      employmentEndedAt: null,
       name: {
         contains: normalizedQuery,
         mode: "insensitive",
@@ -344,6 +354,20 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
   const uniqueAssignedUserIds = [...new Set(assignedUserIds)];
 
   try {
+    const existing = await prisma.employee.findFirst({
+      where: {
+        id: input.employeeId,
+        employmentEndedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      return { ok: false, reason: "Medarbejderen findes ikke eller er fratraadt" };
+    }
+
     await prisma.employee.update({
       where: { id: input.employeeId },
       data: {
@@ -404,9 +428,13 @@ export async function registerEmployeeContactNow(employeeId: string): Promise<{ 
   try {
     const employee = await prisma.employee.findFirst({
       where: isAdmin
-        ? { id: employeeId }
+        ? {
+          id: employeeId,
+          employmentEndedAt: null,
+        }
         : {
           id: employeeId,
+          employmentEndedAt: null,
           ...employeeAccessWhere(user.id),
         },
       select: { id: true },
@@ -443,6 +471,92 @@ export async function registerEmployeeContactNow(employeeId: string): Promise<{ 
     });
 
     return { ok: false, reason: "Kunne ikke registrere kontakt" };
+  }
+}
+
+export async function offboardEmployee(input: OffboardEmployeeDtoInput): Promise<EmployeeMutationResult> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
+
+  const { sessionId, user } = currentSession;
+  if (!can(user, "employee:delete")) {
+    return { ok: false, reason: "Mangler rettighed: employee:delete" };
+  }
+
+  try {
+    const employee = await prisma.employee.findUnique({
+      where: { id: input.employeeId },
+      select: {
+        id: true,
+        employmentEndedAt: true,
+      },
+    });
+
+    if (!employee) {
+      return { ok: false, reason: "Medarbejderen findes ikke" };
+    }
+
+    if (employee.employmentEndedAt) {
+      return { ok: false, reason: "Medarbejderen er allerede fratraadt" };
+    }
+
+    const anonymizedName = `Anonymiseret medarbejder (${employee.id.slice(0, 8)})`;
+
+    await prisma.$transaction([
+      prisma.case.deleteMany({
+        where: {
+          employeeId: input.employeeId,
+        },
+      }),
+      prisma.salary.deleteMany({
+        where: {
+          employeeId: input.employeeId,
+        },
+      }),
+      prisma.employee.update({
+        where: {
+          id: input.employeeId,
+        },
+        data: {
+          employmentEndedAt: input.employmentEndedAt,
+          anonymizedAt: new Date(),
+          name: anonymizedName,
+          lastContact: null,
+          birthdate: null,
+          title: null,
+          email: null,
+          emailAlt: null,
+          phone: null,
+          phoneAlt: null,
+          gdprConsent: null,
+          assignments: {
+            deleteMany: {},
+          },
+        },
+      }),
+    ]);
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "offboard",
+      targetResourceId: input.employeeId,
+      success: true,
+    });
+
+    return { ok: true, employeeId: input.employeeId };
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "offboard",
+      targetResourceId: input.employeeId,
+      success: false,
+    });
+
+    return { ok: false, reason: "Kunne ikke registrere fratraedelse" };
   }
 }
 
@@ -509,10 +623,16 @@ export async function getEmployeeCounts() {
   }
 
   const [totalEmployees, members] = await Promise.all([
-    prisma.employee.count({ where }),
     prisma.employee.count({
       where: {
         ...where,
+        employmentEndedAt: null,
+      },
+    }),
+    prisma.employee.count({
+      where: {
+        ...where,
+        employmentEndedAt: null,
         memberSince: {
           not: null,
         },
@@ -534,6 +654,7 @@ export async function getEmployeeMembershipTimeline() {
     where,
     select: {
       employedAt: true,
+      employmentEndedAt: true,
       memberSince: true,
     },
   });
@@ -545,8 +666,12 @@ export async function getEmployeeMembershipTimeline() {
     const monthStart = new Date(Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + index, 1));
     const monthEnd = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
 
-    const employeeCount = employees.filter((employee) => employee.employedAt < monthEnd).length;
-    const memberCount = employees.filter((employee) => employee.memberSince !== null && employee.memberSince < monthEnd).length;
+    const employeeCount = employees.filter(
+      (employee) => employee.employedAt < monthEnd && (!employee.employmentEndedAt || employee.employmentEndedAt >= monthEnd)
+    ).length;
+    const memberCount = employees.filter(
+      (employee) => employee.memberSince !== null && employee.memberSince < monthEnd && (!employee.employmentEndedAt || employee.employmentEndedAt >= monthEnd)
+    ).length;
 
     return {
       month: monthStart.toISOString().slice(0, 7),
@@ -572,6 +697,7 @@ export async function getMemberBirthdaysNext7Days() {
   const candidates = await prisma.employee.findMany({
     where: {
       ...where,
+      employmentEndedAt: null,
       memberSince: { not: null },
       birthdate: { not: null },
     },
@@ -653,6 +779,7 @@ export async function getMemberEmploymentAnniversaries() {
   const candidates = await prisma.employee.findMany({
     where: {
       ...where,
+      employmentEndedAt: null,
       memberSince: { not: null },
     },
     select: {
@@ -715,6 +842,7 @@ export async function getEmployeesAtContactRisk(limit = 8): Promise<ContactRiskE
   const employees = await prisma.employee.findMany({
     where: {
       ...dashboardWhere,
+      employmentEndedAt: null,
       memberSince: { not: null },
       assignments: {
         some: {

@@ -97,6 +97,20 @@ export async function createEncryptedSalary(input: CreateEncryptedSalaryDtoInput
     return { ok: false, reason: "Mangler rettighed: employee:create eller employee:update" };
   }
 
+  const employee = await prisma.employee.findFirst({
+    where: {
+      id: input.employeeId,
+      employmentEndedAt: null,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!employee) {
+    return { ok: false, reason: "Medarbejderen findes ikke eller er fratraadt" };
+  }
+
   if (input.wrappedKeys.length === 0) {
     return { ok: false, reason: "Ingen modtagernøgler modtaget" };
   }

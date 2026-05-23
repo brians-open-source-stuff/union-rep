@@ -18,7 +18,7 @@ export default function ContactRisk({ data }: { data: ContactRiskEmployee[] }) {
 		<div className="bg-gray-50 p-4 rounded-2xl xl:col-span-2">
 			<h2 className="mb-3 text-base font-semibold">Kontakt</h2>
 			{data.length === 0 ? (
-				<p className="text-sm text-gray-600">Ingen medlemmer er flaget lige nu.</p>
+				<p className="text-sm text-gray-600">🎉 Du taler ofte med alle dine medlemmer!</p>
 			) : (
 				<ul className="space-y-3">
 					{data.map((employee) => (

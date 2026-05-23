@@ -17,6 +17,7 @@ type Employee = {
 	phone: string | null;
 	phoneAlt: string | null;
 	employedAt: string | Date;
+	lastContact: string | Date | null;
 	memberSince: string | Date | null;
 	departments: { id: string; name: string }[];
 	managers: { id: string; name: string; chiefId: string | null }[];
@@ -214,7 +215,13 @@ export default function EmployeeTableClient({ employees, users, canUpdateEmploye
 											<div className="flex items-center gap-1">
 												{canUpdateEmployee ? (
 													<ModalDialog buttonText={<FiPenTool />} buttonVariant="ghost">
-														<EditEmployeeForm employee={employee} users={users} />
+														<EditEmployeeForm
+															employee={{
+																...employee,
+																lastContact: employee.lastContact ? new Date(employee.lastContact) : null,
+															}}
+															users={users}
+														/>
 													</ModalDialog>
 												) : null}
 												{canDeleteEmployee ? (
