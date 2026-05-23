@@ -13,8 +13,8 @@ export type UpdateEmployeeDtoInput = {
   emailAlt: string | null;
   phone: string | null;
   phoneAlt: string | null;
-  managerId: string | null;
-  chiefManagerId: string | null;
+  primaryUserId: string | null;
+  secondaryUserId: string | null;
 };
 
 export type CreateEmployeeDtoInput = {
@@ -28,7 +28,9 @@ export type CreateEmployeeDtoInput = {
   phone: string | null;
   phoneAlt: string | null;
   managerId: string | null;
-  chiefManagerId: string | null;
+  departmentIds: string[];
+  primaryUserId: string | null;
+  secondaryUserId: string | null;
 };
 
 export type EmployeeMutationResult = {
@@ -36,6 +38,57 @@ export type EmployeeMutationResult = {
   reason?: string;
   employeeId?: string;
 };
+
+function activeAssignmentWhere(userId: string) {
+  const now = new Date();
+
+  return {
+    userId,
+    OR: [
+      {
+        validFrom: null,
+        validTo: null,
+      },
+      {
+        validFrom: { lte: now },
+        validTo: null,
+      },
+      {
+        validFrom: null,
+        validTo: { gte: now },
+      },
+      {
+        validFrom: { lte: now },
+        validTo: { gte: now },
+      },
+    ],
+  };
+}
+
+function employeeAccessWhere(userId: string) {
+  return {
+    OR: [
+      {
+        assignments: {
+          some: {
+            ...activeAssignmentWhere(userId),
+          },
+        },
+      },
+      {
+        departments: {
+          some: {
+            assignments: {
+              some: {
+                ...activeAssignmentWhere(userId),
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
+}
 
 export async function createEmployee(input: CreateEmployeeDtoInput): Promise<EmployeeMutationResult> {
   const currentSession = await getCurrentSession();
@@ -46,10 +99,11 @@ export async function createEmployee(input: CreateEmployeeDtoInput): Promise<Emp
     return { ok: false, reason: "Mangler rettighed: employee:create" };
   }
 
-  const managerIds = [input.managerId, input.chiefManagerId].filter(
+  const assignedUserIds = [input.primaryUserId, input.secondaryUserId].filter(
     (value): value is string => Boolean(value)
   );
-  const uniqueManagerIds = [...new Set(managerIds)];
+  const uniqueAssignedUserIds = [...new Set(assignedUserIds)];
+  const uniqueDepartmentIds = [...new Set(input.departmentIds)];
 
   try {
     const employee = await prisma.employee.create({
@@ -63,9 +117,28 @@ export async function createEmployee(input: CreateEmployeeDtoInput): Promise<Emp
         emailAlt: input.emailAlt,
         phone: input.phone,
         phoneAlt: input.phoneAlt,
-        managers: {
-          connect: uniqueManagerIds.map((id) => ({ id })),
-        },
+        ...(input.managerId
+          ? {
+            managers: {
+              connect: [{ id: input.managerId }],
+            },
+          }
+          : {}),
+        ...(uniqueDepartmentIds.length > 0
+          ? {
+            departments: {
+              connect: uniqueDepartmentIds.map((id) => ({ id })),
+            },
+          }
+          : {}),
+        assignments: {
+          create: uniqueAssignedUserIds.map((userId, index) => ({
+            userId,
+            relationshipType: index === 0 ? "primary_contact" : "secondary_contact",
+            isPrimary: index === 0,
+            grantedByUserId: user.id,
+          })),
+        }
       },
       select: { id: true },
     });
@@ -108,7 +181,20 @@ export async function getSingleEmployee(id: string) {
         id
       },
       include: {
-        managers: true,
+        assignments: {
+          orderBy: [
+            { isPrimary: "desc" },
+            { createdAt: "asc" },
+          ],
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         departments: true,
       }
     });
@@ -149,35 +235,30 @@ export async function getEmployees() {
     const employees = await prisma.employee.findMany({
       where: isAdmin
         ? undefined
-        : {
-          managers: {
-            some: {
-              OR: [
-                {
-                  userManagerAccesses: {
-                    some: {
-                      userId: user.id,
-                    },
-                  },
-                },
-                {
-                  subordinates: {
-                    some: {
-                      userManagerAccesses: {
-                        some: {
-                          userId: user.id,
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
+        : employeeAccessWhere(user.id),
+      include: {
+        departments: true,
+        managers: {
+          select: {
+            id: true,
+            name: true,
+            chiefId: true,
+          },
+        },
+        assignments: {
+          orderBy: [
+            { isPrimary: "desc" },
+            { createdAt: "asc" },
+          ],
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
         },
-      include: {
-        departments: true,
-        managers: true,
       },
     });
 
@@ -230,32 +311,7 @@ export async function searchEmployeesByName(query: string): Promise<EmployeeSear
       },
       ...(isAdmin
         ? {}
-        : {
-          managers: {
-            some: {
-              OR: [
-                {
-                  userManagerAccesses: {
-                    some: {
-                      userId: user.id,
-                    },
-                  },
-                },
-                {
-                  subordinates: {
-                    some: {
-                      userManagerAccesses: {
-                        some: {
-                          userId: user.id,
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          },
-        }),
+        : employeeAccessWhere(user.id)),
     },
     select: {
       id: true,
@@ -279,10 +335,10 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
     return { ok: false, reason: "Mangler rettighed: employee:update" };
   }
 
-  const managerIds = [input.managerId, input.chiefManagerId].filter(
+  const assignedUserIds = [input.primaryUserId, input.secondaryUserId].filter(
     (value): value is string => Boolean(value)
   );
-  const uniqueManagerIds = [...new Set(managerIds)];
+  const uniqueAssignedUserIds = [...new Set(assignedUserIds)];
 
   try {
     await prisma.employee.update({
@@ -294,8 +350,14 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
         emailAlt: input.emailAlt,
         phone: input.phone,
         phoneAlt: input.phoneAlt,
-        managers: {
-          set: uniqueManagerIds.map((id) => ({ id })),
+        assignments: {
+          deleteMany: {},
+          create: uniqueAssignedUserIds.map((userId, index) => ({
+            userId,
+            relationshipType: index === 0 ? "primary_contact" : "secondary_contact",
+            isPrimary: index === 0,
+            grantedByUserId: user.id,
+          })),
         },
       },
     });
@@ -374,44 +436,7 @@ async function getDashboardEmployeeWhere() {
     return {};
   }
 
-  const access = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      managerAccess: {
-        select: {
-          manager: {
-            select: {
-              departments: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const departmentIds = [...new Set(
-    (access?.managerAccess ?? [])
-      .flatMap((entry) => entry.manager.departments)
-      .map((department) => department.id),
-  )];
-
-  if (departmentIds.length === 0) {
-    return { id: { in: [] as string[] } };
-  }
-
-  return {
-    departments: {
-      some: {
-        id: {
-          in: departmentIds,
-        },
-      },
-    },
-  };
+  return employeeAccessWhere(user.id);
 }
 
 export async function getEmployeeCounts() {

@@ -23,6 +23,8 @@ model User {
   roles              Role[]
   sessions           Session[]
   auditLogs          AuditLog[]
+  assignments        UserAssignment[]    @relation("UserAssignments")
+  grantedAssignments UserAssignment[]    @relation("GrantedUserAssignments")
   managerAccess      UserManagerAccess[]
   deviceKeys         UserDeviceKey[]
   salaryKeyEnvelopes SalaryKeyEnvelope[] @relation("SalaryKeyEnvelopes")
@@ -67,8 +69,9 @@ model Employee {
 
   departments Department[]
   managers    Manager[]
+  assignments UserAssignment[]
   cases       Case[]
-  salaries    Salary[]     @relation("EmployeeSalaries")
+  salaries    Salary[]         @relation("EmployeeSalaries")
 
   @@index([name])
   @@schema("app")
@@ -100,10 +103,36 @@ model Department {
   zipcode        Int
   city           String
 
-  employees Employee[]
-  managers  Manager[]
+  employees   Employee[]
+  managers    Manager[]
+  assignments UserAssignment[]
 
   @@index([name])
+  @@schema("app")
+}
+
+model UserAssignment {
+  id               String    @id @default(uuid())
+  userId           String
+  relationshipType String
+  employeeId       String?
+  departmentId     String?
+  isPrimary        Boolean   @default(false)
+  validFrom        DateTime?
+  validTo          DateTime?
+  grantedByUserId  String?
+  createdAt        DateTime  @default(now())
+
+  user       User        @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy  User?       @relation("GrantedUserAssignments", fields: [grantedByUserId], references: [id], onDelete: SetNull)
+  employee   Employee?   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([userId, relationshipType])
+  @@index([validFrom, validTo])
   @@schema("app")
 }
 

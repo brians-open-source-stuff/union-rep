@@ -89,6 +89,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: {
+        departments: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    const departmentIds = employee.departments.map((department) => department.id);
+
     const usersWithAccess = await prisma.user.findMany({
       where: {
         OR: [
@@ -101,15 +118,14 @@ export async function GET(req: NextRequest) {
             },
           },
           {
-            managerAccess: {
+            assignments: {
               some: {
-                manager: {
-                  employees: {
-                    some: {
-                      id: employeeId,
-                    },
-                  },
-                },
+                OR: [
+                  { employeeId },
+                  ...(departmentIds.length > 0
+                    ? [{ departmentId: { in: departmentIds } }]
+                    : []),
+                ],
               },
             },
           },

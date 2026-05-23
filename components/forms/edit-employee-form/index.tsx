@@ -7,11 +7,10 @@ import { Input } from "@/components/ui/input";
 import { useActionState, useState } from "react";
 import updateEmployeeAction, { type UpdateEmployeeFormState } from "./update-employee-action";
 
-type ManagerOption = {
+type UserOption = {
 	id: string;
 	name: string;
-	title: string;
-	chiefId: string | null;
+	roles: string[];
 };
 
 type EmployeeForEditForm = {
@@ -22,10 +21,14 @@ type EmployeeForEditForm = {
 	emailAlt: string | null;
 	phone: string | null;
 	phoneAlt: string | null;
-	managers: Array<{
+	assignments: Array<{
 		id: string;
-		name: string;
-		chiefId: string | null;
+		userId: string;
+		isPrimary: boolean;
+		user: {
+			id: string;
+			name: string;
+		};
 	}>;
 };
 
@@ -35,10 +38,10 @@ const initialState: UpdateEmployeeFormState = {
 
 export default function EditEmployeeForm({
 	employee,
-	managers,
+	users,
 }: {
 	employee: Readonly<EmployeeForEditForm>;
-	managers: ReadonlyArray<ManagerOption>;
+	users: ReadonlyArray<UserOption>;
 }) {
 	const [state, formAction, pending] = useActionState(updateEmployeeAction, initialState);
 	const [name, setName] = useState(employee.name);
@@ -47,12 +50,11 @@ export default function EditEmployeeForm({
 	const [emailAlt, setEmailAlt] = useState(employee.emailAlt ?? "");
 	const [phone, setPhone] = useState(employee.phone ?? "");
 	const [phoneAlt, setPhoneAlt] = useState(employee.phoneAlt ?? "");
-	const currentManager = employee.managers.find((manager) => manager.chiefId !== null);
-	const currentChiefManager = employee.managers.find((manager) => manager.chiefId === null);
-	const [managerId, setManagerId] = useState(currentManager?.id ?? "");
-	const [chiefManagerId, setChiefManagerId] = useState(currentChiefManager?.id ?? "");
-	const chiefManagers = managers.filter((manager) => manager.chiefId === null);
-	const directManagers = managers.filter((manager) => manager.chiefId !== null);
+	const currentPrimaryAssignment = employee.assignments.find((assignment) => assignment.isPrimary);
+	const currentSecondaryAssignment = employee.assignments.find((assignment) => !assignment.isPrimary);
+	const [primaryUserId, setPrimaryUserId] = useState(currentPrimaryAssignment?.userId ?? "");
+	const [secondaryUserId, setSecondaryUserId] = useState(currentSecondaryAssignment?.userId ?? "");
+	const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name, "da"));
 
 	return (
 		<form action={formAction}>
@@ -96,30 +98,30 @@ export default function EditEmployeeForm({
 						/>
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
-						<span>Manager</span>
+						<span>Primær kontaktperson</span>
 						<select
-							name="managerId"
-							value={managerId}
-							onChange={(event) => setManagerId(event.target.value)}
+							name="primaryUserId"
+							value={primaryUserId}
+							onChange={(event) => setPrimaryUserId(event.target.value)}
 							className="h-9 w-full rounded-md border px-2"
 						>
 							<option value="">Ingen</option>
-							{directManagers.map((manager) => (
-								<option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>
+							{sortedUsers.map((user) => (
+								<option key={user.id} value={user.id}>{user.name} ({user.roles.join(", ") || "ingen rolle"})</option>
 							))}
 						</select>
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">
-						<span>Chefleder</span>
+						<span>Sekundær kontaktperson</span>
 						<select
-							name="chiefManagerId"
-							value={chiefManagerId}
-							onChange={(event) => setChiefManagerId(event.target.value)}
+							name="secondaryUserId"
+							value={secondaryUserId}
+							onChange={(event) => setSecondaryUserId(event.target.value)}
 							className="h-9 w-full rounded-md border px-2"
 						>
 							<option value="">Ingen</option>
-							{chiefManagers.map((manager) => (
-								<option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>
+							{sortedUsers.map((user) => (
+								<option key={user.id} value={user.id}>{user.name} ({user.roles.join(", ") || "ingen rolle"})</option>
 							))}
 						</select>
 					</FieldLabel>

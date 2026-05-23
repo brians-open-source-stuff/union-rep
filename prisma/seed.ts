@@ -44,19 +44,19 @@ async function main() {
 		where: { name: "union_rep" },
 		update: {
 			permissions: {
-				set: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read", "manager:read"].map((name) => ({ name })),
+				set: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read"].map((name) => ({ name })),
 			},
 		},
 		create: {
 			name: "union_rep",
 			permissions: {
-				connect: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read", "manager:read"].map((name) => ({ name })),
+				connect: ["employee:create", "employee:read", "employee:update", "employee:delete", "department:read"].map((name) => ({ name })),
 			},
 		},
 	});
 
 	// Bootstrap admin user
-	await prisma.user.upsert({
+	const adminUser = await prisma.user.upsert({
 		where: { email: "admin@unionrep.local" },
 		update: {
 			roles: { set: [{ name: "admin" }] },
@@ -163,7 +163,7 @@ async function main() {
 	});
 
 	// Reset fictional data
-	await prisma.employee.deleteMany({});
+	await prisma.userAssignment.deleteMany({});
 	await prisma.employee.deleteMany({});
 	await prisma.manager.deleteMany({});
 	await prisma.department.deleteMany({});
@@ -210,33 +210,7 @@ async function main() {
 		}),
 	);
 
-	// Create employees
-	const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
-
-	for (let index = 0; index < employees.length; index += 1) {
-		const employee = employees[index];
-		const departmentIndex = index % departments.length;
-		const department = departments[departmentIndex];
-		const managerGroup = managersByDepartment[departmentIndex];
-		const managerIndex = employeeCountPerDepartment[departmentIndex] % managerGroup.length;
-		const manager = managerGroup[managerIndex];
-
-		employeeCountPerDepartment[departmentIndex] += 1;
-
-		await prisma.employee.create({
-			data: {
-				...employee,
-				departments: {
-					connect: [{ id: department.id }],
-				},
-				managers: {
-					connect: [{ id: manager.id }],
-				},
-			},
-		});
-	}
-
-	// Create union_rep users and grant them manager access
+	// Create union_rep users used for assignment-based access
 	const unionRepUsers = [
 		{ email: "hbp@unionrep.local", name: "Henrik Bjørn Pedersen" },
 		{ email: "be@unionrep.local", name: "Brian Emilius" },
@@ -261,28 +235,86 @@ async function main() {
 		),
 	);
 
-	// Grant union rep access to managers
-	// Anna gets Copenhagen managers, Bent gets Odense, Charlotte gets Aarhus
+	// Create employees
+	const employeeCountPerDepartment = Array.from({ length: departments.length }, () => 0);
+	const createdEmployeesByDepartment: Array<Array<{ id: string }>> = Array.from(
+		{ length: departments.length },
+		() => [],
+	);
+
+	for (let index = 0; index < employees.length; index += 1) {
+		const employee = employees[index];
+		const departmentIndex = index % departments.length;
+		const department = departments[departmentIndex];
+		const managerGroup = managersByDepartment[departmentIndex];
+		const managerIndex = employeeCountPerDepartment[departmentIndex] % managerGroup.length;
+		const manager = managerGroup[managerIndex];
+
+		employeeCountPerDepartment[departmentIndex] += 1;
+
+		const createdEmployee = await prisma.employee.create({
+			data: {
+				...employee,
+				departments: {
+					connect: [{ id: department.id }],
+				},
+				managers: {
+					connect: [{ id: manager.id }],
+				},
+			},
+		});
+
+		createdEmployeesByDepartment[departmentIndex].push({ id: createdEmployee.id });
+	}
+
+	// Grant union rep access with assignment-based department scopes
 	for (let i = 0; i < createdUnionReps.length; i++) {
 		const user = createdUnionReps[i];
-		const managerGroup = managersByDepartment[i];
+		const department = departments[i];
 
-		for (const manager of managerGroup) {
-			const existing = await prisma.userManagerAccess.findFirst({
-				where: {
+		const existing = await prisma.userAssignment.findFirst({
+			where: {
+				userId: user.id,
+				departmentId: department.id,
+				relationshipType: "department_scope",
+			},
+		});
+
+		if (!existing) {
+			await prisma.userAssignment.create({
+				data: {
 					userId: user.id,
-					managerId: manager.id,
+					departmentId: department.id,
+					relationshipType: "department_scope",
+					isPrimary: true,
+				},
+			});
+		}
+	}
+
+	// Seed employee-level contact ownership using the new assignment model.
+	for (let i = 0; i < createdEmployeesByDepartment.length; i++) {
+		const departmentEmployees = createdEmployeesByDepartment[i];
+		const primaryRep = createdUnionReps[i];
+
+		for (const employee of departmentEmployees) {
+			await prisma.userAssignment.create({
+				data: {
+					userId: primaryRep.id,
+					employeeId: employee.id,
+					relationshipType: "primary_contact",
+					isPrimary: true,
 				},
 			});
 
-			if (!existing) {
-				await prisma.userManagerAccess.create({
-					data: {
-						userId: user.id,
-						managerId: manager.id,
-					},
-				});
-			}
+			await prisma.userAssignment.create({
+				data: {
+					userId: adminUser.id,
+					employeeId: employee.id,
+					relationshipType: "secondary_contact",
+					isPrimary: false,
+				},
+			});
 		}
 	}
 

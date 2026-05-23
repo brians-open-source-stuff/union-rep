@@ -10,13 +10,31 @@ function b64urlEncode(buf: ArrayBuffer | Uint8Array): string {
     .replace(/=+$/g, "");
 }
 
-function b64urlDecode(str: string): Uint8Array {
+function b64urlDecode(str: string): ArrayBuffer {
   const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
   const padded = `${base64}${"=".repeat((4 - (base64.length % 4)) % 4)}`;
-  return Uint8Array.from(Buffer.from(padded, "base64"));
+  const bytes = Uint8Array.from(Buffer.from(padded, "base64"));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 async function getRecipientKeysForEmployee(employeeId: string, userId: string) {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: {
+      departments: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!employee) {
+    return [];
+  }
+
+  const departmentIds = employee.departments.map((department) => department.id);
+
   const usersWithAccess = await prisma.user.findMany({
     where: {
       OR: [
@@ -29,15 +47,14 @@ async function getRecipientKeysForEmployee(employeeId: string, userId: string) {
           },
         },
         {
-          managerAccess: {
+          assignments: {
             some: {
-              manager: {
-                employees: {
-                  some: {
-                    id: employeeId,
-                  },
-                },
-              },
+              OR: [
+                { employeeId },
+                ...(departmentIds.length > 0
+                  ? [{ departmentId: { in: departmentIds } }]
+                  : []),
+              ],
             },
           },
         },
@@ -134,7 +151,7 @@ export async function ensureCaseAccessForUser(caseId: string, userId: string): P
   }
 
   const masterKey = await prisma.userDeviceKey.findFirst({
-    where: { userId, kind: "master", status: "active", privateKey: { not: null } },
+    where: { userId, kind: "master", status: "active" },
     select: { keyId: true, privateKey: true },
   });
 
@@ -182,7 +199,7 @@ export async function ensureSalaryAccessForUser(salaryId: string, userId: string
   }
 
   const masterKey = await prisma.userDeviceKey.findFirst({
-    where: { userId, kind: "master", status: "active", privateKey: { not: null } },
+    where: { userId, kind: "master", status: "active" },
     select: { keyId: true, privateKey: true },
   });
 

@@ -6,22 +6,41 @@ import { Input } from "@/components/ui/input";
 import { useActionState } from "react";
 import createEmployeeAction, { type CreateEmployeeFormState } from "./create-employee-action";
 
+type UserOption = {
+  id: string;
+  name: string;
+  roles: string[];
+};
+
 type ManagerOption = {
   id: string;
   name: string;
   title: string;
-  chiefId: string | null;
+};
+
+type DepartmentOption = {
+  id: string;
+  name: string;
 };
 
 const initialState: CreateEmployeeFormState = {
   success: false,
 };
 
-export default function CreateEmployeeForm({ managers }: { managers: ReadonlyArray<ManagerOption> }) {
+export default function CreateEmployeeForm({
+  users,
+  managers,
+  departments,
+}: {
+  users: ReadonlyArray<UserOption>;
+  managers: ReadonlyArray<ManagerOption>;
+  departments: ReadonlyArray<DepartmentOption>;
+}) {
   const [state, formAction, pending] = useActionState(createEmployeeAction, initialState);
 
-  const chiefManagers = managers.filter((manager) => manager.chiefId === null);
-  const directManagers = managers.filter((manager) => manager.chiefId !== null);
+  const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name, "da"));
+  const sortedManagers = [...managers].sort((a, b) => a.name.localeCompare(b.name, "da"));
+  const sortedDepartments = [...departments].sort((a, b) => a.name.localeCompare(b.name, "da"));
 
   return (
     <form action={formAction} className="max-w-2xl space-y-4">
@@ -63,20 +82,38 @@ export default function CreateEmployeeForm({ managers }: { managers: ReadonlyArr
           <Input type="tel" name="phoneAlt" />
         </FieldLabel>
         <FieldLabel className="flex flex-col items-start">
-          <span>Manager</span>
+          <span>Afdeling</span>
+          <select name="departmentId" defaultValue="" className="h-9 w-full rounded-md border px-2">
+            <option value="">Ingen</option>
+            {sortedDepartments.map((department) => (
+              <option key={department.id} value={department.id}>{department.name}</option>
+            ))}
+          </select>
+        </FieldLabel>
+        <FieldLabel className="flex flex-col items-start">
+          <span>Leder</span>
           <select name="managerId" defaultValue="" className="h-9 w-full rounded-md border px-2">
             <option value="">Ingen</option>
-            {directManagers.map((manager) => (
+            {sortedManagers.map((manager) => (
               <option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>
             ))}
           </select>
         </FieldLabel>
         <FieldLabel className="flex flex-col items-start">
-          <span>Chefleder</span>
-          <select name="chiefManagerId" defaultValue="" className="h-9 w-full rounded-md border px-2">
+          <span>Primær kontaktperson</span>
+          <select name="primaryUserId" defaultValue="" className="h-9 w-full rounded-md border px-2">
             <option value="">Ingen</option>
-            {chiefManagers.map((manager) => (
-              <option key={manager.id} value={manager.id}>{manager.name} ({manager.title})</option>
+            {sortedUsers.map((user) => (
+              <option key={user.id} value={user.id}>{user.name} ({user.roles.join(", ") || "ingen rolle"})</option>
+            ))}
+          </select>
+        </FieldLabel>
+        <FieldLabel className="flex flex-col items-start">
+          <span>Sekundær kontaktperson</span>
+          <select name="secondaryUserId" defaultValue="" className="h-9 w-full rounded-md border px-2">
+            <option value="">Ingen</option>
+            {sortedUsers.map((user) => (
+              <option key={user.id} value={user.id}>{user.name} ({user.roles.join(", ") || "ingen rolle"})</option>
             ))}
           </select>
         </FieldLabel>

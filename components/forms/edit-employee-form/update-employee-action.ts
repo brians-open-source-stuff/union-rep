@@ -17,8 +17,8 @@ const UpdateEmployeeSchema = z.object({
   emailAlt: z.string().trim().optional(),
   phone: z.string().trim().optional(),
   phoneAlt: z.string().trim().optional(),
-  managerId: z.string().trim().optional(),
-  chiefManagerId: z.string().trim().optional(),
+  primaryUserId: z.string().trim().optional(),
+  secondaryUserId: z.string().trim().optional(),
 });
 
 function emptyToNull(value?: string): string | null {
@@ -39,16 +39,16 @@ export default async function updateEmployeeAction(
     emailAlt: formData.get("emailAlt"),
     phone: formData.get("phone"),
     phoneAlt: formData.get("phoneAlt"),
-    managerId: formData.get("managerId"),
-    chiefManagerId: formData.get("chiefManagerId"),
+    primaryUserId: formData.get("primaryUserId"),
+    secondaryUserId: formData.get("secondaryUserId"),
   });
 
   if (!parsed.success) {
     return { success: false, error: "Ugyldige data" };
   }
 
-  const managerId = emptyToNull(parsed.data.managerId);
-  const chiefManagerId = emptyToNull(parsed.data.chiefManagerId);
+  const primaryUserId = emptyToNull(parsed.data.primaryUserId);
+  const secondaryUserId = emptyToNull(parsed.data.secondaryUserId);
 
   const result = await updateEmployee({
     employeeId: parsed.data.employeeId,
@@ -58,8 +58,8 @@ export default async function updateEmployeeAction(
     emailAlt: emptyToNull(parsed.data.emailAlt),
     phone: emptyToNull(parsed.data.phone),
     phoneAlt: emptyToNull(parsed.data.phoneAlt),
-    managerId,
-    chiefManagerId,
+    primaryUserId,
+    secondaryUserId,
   });
 
   if (!result.ok) {

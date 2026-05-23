@@ -20,8 +20,10 @@ const CreateEmployeeSchema = z.object({
   emailAlt: z.string().trim().optional(),
   phone: z.string().trim().optional(),
   phoneAlt: z.string().trim().optional(),
+  departmentId: z.string().trim().optional(),
   managerId: z.string().trim().optional(),
-  chiefManagerId: z.string().trim().optional(),
+  primaryUserId: z.string().trim().optional(),
+  secondaryUserId: z.string().trim().optional(),
 });
 
 function emptyToNull(value?: string): string | null {
@@ -57,8 +59,10 @@ export default async function createEmployeeAction(
     emailAlt: formData.get("emailAlt"),
     phone: formData.get("phone"),
     phoneAlt: formData.get("phoneAlt"),
+    departmentId: formData.get("departmentId"),
     managerId: formData.get("managerId"),
-    chiefManagerId: formData.get("chiefManagerId"),
+    primaryUserId: formData.get("primaryUserId"),
+    secondaryUserId: formData.get("secondaryUserId"),
   });
 
   if (!parsed.success) {
@@ -80,8 +84,10 @@ export default async function createEmployeeAction(
     emailAlt: emptyToNull(parsed.data.emailAlt),
     phone: emptyToNull(parsed.data.phone),
     phoneAlt: emptyToNull(parsed.data.phoneAlt),
+    departmentIds: [emptyToNull(parsed.data.departmentId)].filter((value): value is string => Boolean(value)),
     managerId: emptyToNull(parsed.data.managerId),
-    chiefManagerId: emptyToNull(parsed.data.chiefManagerId),
+    primaryUserId: emptyToNull(parsed.data.primaryUserId),
+    secondaryUserId: emptyToNull(parsed.data.secondaryUserId),
   });
 
   if (!result.ok || !result.employeeId) {

@@ -56,23 +56,6 @@ export default async function updateUserAction(
     return { success: false, error: "Nyt password skal være mindst 8 tegn" };
   }
 
-  const managers = selectedDepartmentIds.length > 0
-    ? await prisma.manager.findMany({
-      select: { id: true },
-      where: {
-        departments: {
-          some: {
-            id: {
-              in: selectedDepartmentIds,
-            },
-          },
-        },
-      },
-    })
-    : [];
-
-  const managerIds = managers.map((manager) => manager.id);
-
   try {
     await prisma.user.update({
       where: {
@@ -83,12 +66,18 @@ export default async function updateUserAction(
         roles: {
           set: selectedRoleIds.map((id) => ({ id })),
         },
-        managerAccess: {
-          deleteMany: {},
-          ...(managerIds.length > 0
+        assignments: {
+          deleteMany: {
+            relationshipType: "department_scope",
+          },
+          ...(selectedDepartmentIds.length > 0
             ? {
               createMany: {
-                data: managerIds.map((managerId) => ({ managerId })),
+                data: selectedDepartmentIds.map((departmentId) => ({
+                  departmentId,
+                  relationshipType: "department_scope",
+                  grantedByUserId: session.user.id,
+                })),
                 skipDuplicates: true,
               },
             }

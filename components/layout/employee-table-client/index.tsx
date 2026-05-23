@@ -20,29 +20,35 @@ type Employee = {
 	memberSince: string | Date | null;
 	departments: { id: string; name: string }[];
 	managers: { id: string; name: string; chiefId: string | null }[];
+	assignments: {
+		id: string;
+		userId: string;
+		isPrimary: boolean;
+		user: { id: string; name: string };
+	}[];
 };
 
-type ManagerOption = {
+type UserOption = {
 	id: string;
 	name: string;
-	title: string;
-	chiefId: string | null;
+	roles: string[];
 };
 
 type Props = {
 	employees: Employee[];
-	managers: ManagerOption[];
+	users: UserOption[];
 	canUpdateEmployee: boolean;
 	canDeleteEmployee: boolean;
 };
 
 type MembershipFilter = "all" | "members" | "non-members";
-type SortOption = "name" | "employedAt";
+type SortOption = "name" | "employedAt" | "manager";
 
-export default function EmployeeTableClient({ employees, managers, canUpdateEmployee, canDeleteEmployee }: Props) {
+export default function EmployeeTableClient({ employees, users, canUpdateEmployee, canDeleteEmployee }: Props) {
 	const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("all");
 	const [departmentFilter, setDepartmentFilter] = useState("");
 	const [managerFilter, setManagerFilter] = useState("");
+	const [contactFilter, setContactFilter] = useState("");
 	const [sortBy, setSortBy] = useState<SortOption>("name");
 
 	const departments = useMemo(() => {
@@ -51,6 +57,18 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 		for (const employee of employees) {
 			for (const department of employee.departments) {
 				map.set(department.id, department);
+			}
+		}
+
+		return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "da"));
+	}, [employees]);
+
+	const contactOptions = useMemo(() => {
+		const map = new Map<string, { id: string; name: string }>();
+
+		for (const employee of employees) {
+			for (const assignment of employee.assignments) {
+				map.set(assignment.user.id, assignment.user);
 			}
 		}
 
@@ -81,10 +99,11 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 				return false;
 			}
 
-			if (
-				managerFilter &&
-				!employee.managers.some((manager) => manager.id === managerFilter)
-			) {
+			if (managerFilter && !employee.managers.some((manager) => manager.id === managerFilter)) {
+				return false;
+			}
+
+			if (contactFilter && !employee.assignments.some((assignment) => assignment.userId === contactFilter)) {
 				return false;
 			}
 
@@ -100,7 +119,7 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 		});
 
 		return filtered;
-	}, [employees, membershipFilter, departmentFilter, managerFilter, sortBy]);
+	}, [employees, membershipFilter, departmentFilter, managerFilter, contactFilter, sortBy]);
 
 	return (
 		<div className="space-y-4">
@@ -142,6 +161,19 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 				</select>
 
 				<select
+					value={contactFilter}
+					onChange={(event) => setContactFilter(event.target.value)}
+					className="rounded-md border px-3 py-2"
+				>
+					<option value="">Alle kontaktpersoner</option>
+					{contactOptions.map((user) => (
+						<option key={user.id} value={user.id}>
+							{user.name}
+						</option>
+					))}
+				</select>
+
+				<select
 					value={sortBy}
 					onChange={(event) => setSortBy(event.target.value as SortOption)}
 					className="rounded-md border px-3 py-2"
@@ -158,7 +190,7 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 						<TableHead>Navn</TableHead>
 						<TableHead>Afdeling</TableHead>
 						<TableHead>Titel</TableHead>
-						<TableHead>Chef/leder</TableHead>
+						<TableHead>Primær kontakt</TableHead>
 						<TableHead>Ansat dato</TableHead>
 						<TableHead>Indmeldelsesdato</TableHead>
 					</TableRow>
@@ -170,6 +202,10 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 								employee.managers.find((manager) => manager.chiefId !== null) ??
 								employee.managers.find((manager) => manager.chiefId === null) ??
 								null;
+							const nearestContact =
+								employee.assignments.find((assignment) => assignment.isPrimary)?.user ??
+								employee.assignments[0]?.user ??
+								null;
 
 							return (
 								<TableRow key={employee.id}>
@@ -178,7 +214,7 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 											<div className="flex items-center gap-1">
 												{canUpdateEmployee ? (
 													<ModalDialog buttonText={<FiPenTool />} buttonVariant="ghost">
-														<EditEmployeeForm employee={employee} managers={managers} />
+														<EditEmployeeForm employee={employee} users={users} />
 													</ModalDialog>
 												) : null}
 												{canDeleteEmployee ? (
@@ -192,7 +228,7 @@ export default function EmployeeTableClient({ employees, managers, canUpdateEmpl
 									<TableCell><Link href={"/employees/" + employee.id}>{employee.name}</Link></TableCell>
 									<TableCell>{employee.departments[0]?.name ?? ""}</TableCell>
 									<TableCell>{employee.title}</TableCell>
-									<TableCell>{nearestManager?.name ?? "Ikke tildelt"}</TableCell>
+									<TableCell>{nearestManager?.name ?? nearestContact?.name ?? "Ikke tildelt"}</TableCell>
 									<TableCell>
 										{Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(new Date(employee.employedAt))}
 									</TableCell>

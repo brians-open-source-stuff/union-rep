@@ -1,8 +1,8 @@
 import EmployeeTableClient from "@/components/layout/employee-table-client";
 import { buttonVariants } from "@/components/ui/button";
 import { getEmployees } from "@/data/employee-dto";
-import { getManagers } from "@/data/manager-dto";
 import { getCurrentSession } from "@/data/session";
+import { getEmployeeAssignmentUserOptions } from "@/data/user-dto";
 import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -20,7 +20,7 @@ export default async function EmployeePage() {
   const canUpdateEmployee = currentSession ? can(currentSession.user, "employee:update") : false;
   const canDeleteEmployee = currentSession ? can(currentSession.user, "employee:delete") : false;
 
-  const managers = canUpdateEmployee ? await getManagers() : [];
+  const users = canUpdateEmployee ? await getEmployeeAssignmentUserOptions() : [];
 
   return (
     <>
@@ -34,7 +34,7 @@ export default async function EmployeePage() {
       </div>
       <EmployeeTableClient
         employees={employees}
-        managers={managers}
+        users={users}
         canUpdateEmployee={canUpdateEmployee}
         canDeleteEmployee={canDeleteEmployee}
       />

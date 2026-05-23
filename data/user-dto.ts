@@ -42,9 +42,15 @@ export async function getUsers(): Promise<UserListItem[]> {
 					name: true,
 				},
 			},
-			managerAccess: {
+			assignments: {
 				select: {
-					manager: {
+					department: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+					employee: {
 						select: {
 							departments: {
 								select: {
@@ -69,16 +75,58 @@ export async function getUsers(): Promise<UserListItem[]> {
 		roleIds: user.roles.map((role) => role.id).sort((a, b) => a.localeCompare(b, "da")),
 		departments: [
 			...new Set(
-				user.managerAccess
-					.flatMap((access) => access.manager.departments)
+				user.assignments
+					.flatMap((assignment) => [
+						...(assignment.department ? [assignment.department] : []),
+						...(assignment.employee ? assignment.employee.departments : []),
+					])
 					.map((department) => department.name),
 			),
 		].sort((a, b) => a.localeCompare(b, "da")),
 		departmentIds: [...new Set(
-			user.managerAccess
-				.flatMap((access) => access.manager.departments)
+			user.assignments
+				.flatMap((assignment) => [
+					...(assignment.department ? [assignment.department] : []),
+					...(assignment.employee ? assignment.employee.departments : []),
+				])
 				.map((department) => department.id),
 		)].sort((a, b) => a.localeCompare(b, "da")),
+	}));
+}
+
+export type EmployeeAssignmentUserOption = {
+	id: string;
+	name: string;
+	roles: string[];
+};
+
+export async function getEmployeeAssignmentUserOptions(): Promise<EmployeeAssignmentUserOption[]> {
+	const session = await getCurrentSession();
+	if (!session) return [];
+
+	if (!can(session.user, "employee:update") && !can(session.user, "employee:create")) {
+		return [];
+	}
+
+	const users = await prisma.user.findMany({
+		select: {
+			id: true,
+			name: true,
+			roles: {
+				select: {
+					name: true,
+				},
+			},
+		},
+		orderBy: {
+			name: "asc",
+		},
+	});
+
+	return users.map((user) => ({
+		id: user.id,
+		name: user.name,
+		roles: user.roles.map((role) => role.name).sort((a, b) => a.localeCompare(b, "da")),
 	}));
 }
 

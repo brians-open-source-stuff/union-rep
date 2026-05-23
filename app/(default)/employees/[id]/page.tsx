@@ -9,7 +9,7 @@ import { getSingleEmployee } from "@/data/employee-dto";
 import { getCasesForEmployee } from "@/data/case-dto";
 import { getSalariesForEmployee } from "@/data/salary-dto";
 import { getCurrentSession } from "@/data/session";
-import { getManagers } from "@/data/manager-dto";
+import { getEmployeeAssignmentUserOptions } from "@/data/user-dto";
 import { can } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -36,19 +36,19 @@ export async function generateMetadata(
 
 export default async function EmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [employee, cases, salaries, currentSession, managers] = await Promise.all([
+  const [employee, cases, salaries, currentSession, users] = await Promise.all([
     getSingleEmployee(id),
     getCasesForEmployee(id),
     getSalariesForEmployee(id),
     getCurrentSession(),
-    getManagers(),
+    getEmployeeAssignmentUserOptions(),
   ]);
 
   if (!employee) notFound();
 
-  const nearestManager =
-    employee.managers.find((manager) => manager.chiefId !== null) ??
-    employee.managers.find((manager) => manager.chiefId === null) ??
+  const nearestContact =
+    employee.assignments.find((assignment) => assignment.isPrimary)?.user ??
+    employee.assignments[0]?.user ??
     null;
 
   const canUpdateEmployee = currentSession ? can(currentSession.user, "employee:update") : false;
@@ -59,7 +59,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       <div className="mb-4 flex items-center gap-2">
         {canUpdateEmployee ? (
           <ModalDialog buttonText="Rediger staminfo" buttonVariant="default">
-            <EditEmployeeForm employee={employee} managers={managers} />
+            <EditEmployeeForm employee={employee} users={users} />
           </ModalDialog>
         ) : null}
         {canDeleteEmployee ? (
@@ -71,7 +71,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       <h1 className="text-xl">{employee.name}, {employee.title}</h1>
       <p>Ansættelsesdato: {Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(employee.employedAt)}</p>
       <p>{employee.memberSince ? <span className="bg-green-800 text-white px-2">Er medlem</span> : <span className="bg-red-500 text-white px-2">Er ikke medlem</span>}</p>
-      <p>Nærmeste leder: {nearestManager?.name ?? "Ikke tildelt"}</p>
+      <p>Primær kontakt: {nearestContact?.name ?? "Ikke tildelt"}</p>
       <section className="mt-6">
         <h2 className="text-lg font-semibold">Sager <ModalDialog buttonText="Opret sag" buttonVariant="outline">
           <CreateCaseForm employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />
