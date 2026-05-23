@@ -3,12 +3,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    command:
+      - sh
+      - -c
+      - |
+        npx prisma db push
+        npx prisma db seed
+        exec npm run dev -- -H 0.0.0.0 -p 3000
     container_name: union-rep-app
     ports:
       - "${APP_PORT:-3100}:3000"
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgres://${POSTGRES_USER:-unionrep}:${POSTGRES_PASSWORD:-unionrep}@postgres:5432/${POSTGRES_DB:-unionrep}?schema=app
+      DATABASE_URL: postgresql://${POSTGRES_USER:-unionrep}:${POSTGRES_PASSWORD:-unionrep}@postgres:5432/${POSTGRES_DB:-unionrep}?schema=app
       REDIS_URL: redis://${REDIS_USERNAME:-unionrep}:${REDIS_PASSWORD:-unionrep}@redis:6379/0
     depends_on:
       postgres:
@@ -50,8 +57,8 @@ services:
         printf '%s\n' \
           "user default off" \
           "user ${REDIS_USERNAME:-unionrep} on >${REDIS_PASSWORD:-unionrep} ~* +@all" \
-          > /usr/local/etc/redis/users.acl
-        exec redis-server --appendonly yes --aclfile /usr/local/etc/redis/users.acl
+          > /data/users.acl
+        exec redis-server --appendonly yes --aclfile /data/users.acl
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli --user ${REDIS_USERNAME:-unionrep} --pass ${REDIS_PASSWORD:-unionrep} ping | grep PONG" ]
       interval: 10s
