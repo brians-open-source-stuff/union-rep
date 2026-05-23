@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/data/session";
 import { can } from "@/lib/utils";
-import { updateCaseKeyEnvelopes, updateRewrapJobProgress } from "@/lib/rewrap-utils";
+import { updateCaseKeyEnvelopes } from "@/lib/rewrap-utils";
 
 export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
@@ -9,29 +9,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check both permissions
-  if (!can(session.user, "key:read") || !can(session.user, "key:update")) {
+  if (!can(session.user, "employee:read")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await request.json();
-  const { caseId, wrappedKeys, jobId } = body;
+  const { caseId, wrappedKeys } = body;
 
-  if (!caseId || !wrappedKeys || !jobId) {
+  if (!caseId || !wrappedKeys) {
     return NextResponse.json(
-      { error: "Missing required fields: caseId, wrappedKeys, jobId" },
+      { error: "Missing required fields: caseId, wrappedKeys" },
       { status: 400 }
     );
   }
 
   try {
     await updateCaseKeyEnvelopes(caseId, wrappedKeys);
-
-    // Update job progress
-    await updateRewrapJobProgress(jobId, {
-      status: "in_progress",
-      processedRecords: undefined, // Will be incremented on client
-    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -27,9 +27,30 @@ export default function OTPForm() {
 				generateAndStoreDeviceKey,
 				getDeviceKeysForUser,
 				setActiveDeviceUser,
+				storeKeyMaterial,
 			} = await import("@/lib/device-crypto");
 
 			setActiveDeviceUser(userId);
+
+			const masterResponse = await fetch("/api/keys/master");
+			if (masterResponse.ok) {
+				const masterKey = await masterResponse.json() as {
+					keyId: string;
+					userId: string;
+					publicKeyJwk: JsonWebKey;
+					privateKeyJwk: JsonWebKey;
+					algorithm: string;
+				};
+
+				await storeKeyMaterial({
+					keyId: masterKey.keyId,
+					userId: masterKey.userId,
+					publicKeyJwk: masterKey.publicKeyJwk,
+					privateKeyJwk: masterKey.privateKeyJwk,
+					algorithm: masterKey.algorithm,
+					kind: "master",
+				});
+			}
 
 			const res = await fetch(`/api/keys/public?users=${userId}`);
 			const { keys } = await res.json();

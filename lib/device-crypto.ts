@@ -5,6 +5,7 @@ const STORE_NAME = "device_keys";
 type StoredDeviceKey = {
   keyId: string;
   userId?: string;
+  kind?: "device" | "master";
   privateKey?: CryptoKey;
   privateKeyJwk?: JsonWebKey;
   publicKeyJwk: JsonWebKey;
@@ -78,15 +79,36 @@ export async function generateAndStoreDeviceKey(userId?: string): Promise<{
   const keyId = crypto.randomUUID();
   const algorithm = "RSA-OAEP-256";
 
+  await storeKeyMaterial({
+    keyId,
+    userId,
+    privateKeyJwk,
+    publicKeyJwk,
+    algorithm,
+    kind: "device",
+  });
+
+  return { keyId, publicKeyJwk, algorithm };
+}
+
+export async function storeKeyMaterial(input: {
+  keyId: string;
+  userId?: string;
+  privateKeyJwk?: JsonWebKey;
+  publicKeyJwk: JsonWebKey;
+  algorithm: string;
+  kind?: "device" | "master";
+}): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     tx.objectStore(STORE_NAME).put({
-      keyId,
-      userId,
-      privateKeyJwk,
-      publicKeyJwk,
-      algorithm,
+      keyId: input.keyId,
+      userId: input.userId,
+      kind: input.kind ?? "device",
+      privateKeyJwk: input.privateKeyJwk,
+      publicKeyJwk: input.publicKeyJwk,
+      algorithm: input.algorithm,
       createdAt: new Date().toISOString(),
     } satisfies StoredDeviceKey);
     tx.oncomplete = () => {
@@ -102,8 +124,6 @@ export async function generateAndStoreDeviceKey(userId?: string): Promise<{
       reject(tx.error);
     };
   });
-
-  return { keyId, publicKeyJwk, algorithm };
 }
 
 export async function getDeviceKey(keyId: string): Promise<StoredDeviceKey | null> {
@@ -208,7 +228,8 @@ export async function getActiveDeviceKeyId(): Promise<string | null> {
       if (activeUserId) {
         const activeUserKeys = keys.filter((k) => k.userId === activeUserId);
         if (activeUserKeys.length > 0) {
-          resolve(activeUserKeys[activeUserKeys.length - 1].keyId);
+          const masterKey = [...activeUserKeys].reverse().find((k) => k.kind === "master");
+          resolve((masterKey ?? activeUserKeys[activeUserKeys.length - 1]).keyId);
           return;
         }
       }

@@ -4,6 +4,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { can } from "@/lib/utils";
 
+async function ensureUserMasterKey(userId: string) {
+  const existingMaster = await prisma.userDeviceKey.findFirst({
+    where: { userId, kind: "master", status: "active" },
+    select: { id: true },
+  });
+
+  if (existingMaster) {
+    return;
+  }
+
+  const keyPair = await crypto.subtle.generateKey(
+    {
+      name: "RSA-OAEP",
+      modulusLength: 4096,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["wrapKey", "unwrapKey"]
+  );
+
+  const publicKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+  const privateKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+  await prisma.userDeviceKey.create({
+    data: {
+      keyId: crypto.randomUUID(),
+      userId,
+      publicKey: publicKeyJwk as object,
+      privateKey: privateKeyJwk as object,
+      algorithm: "RSA-OAEP-256",
+      kind: "master",
+      status: "active",
+    },
+  });
+}
+
 const UploadKeySchema = z.object({
   keyId: z.uuid(),
   publicKeyJwk: z.record(z.string(), z.unknown()),
@@ -29,8 +66,11 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       publicKey: parsed.data.publicKeyJwk as object,
       algorithm: parsed.data.algorithm,
+      kind: "device",
     },
   });
+
+  await ensureUserMasterKey(session.user.id);
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
@@ -83,7 +123,11 @@ export async function GET(req: NextRequest) {
     const recipientUserIds = usersWithAccess.map((user) => user.id);
 
     const keys = await prisma.userDeviceKey.findMany({
-      where: { userId: { in: recipientUserIds }, status: "active" },
+      where: {
+        userId: { in: recipientUserIds },
+        kind: { in: ["device", "master"] },
+        status: "active",
+      },
       select: { keyId: true, userId: true, publicKey: true, algorithm: true },
     });
 
@@ -93,8 +137,12 @@ export async function GET(req: NextRequest) {
   const userIds = req.nextUrl.searchParams.get("users")?.split(",").filter(Boolean) ?? [];
   if (userIds.length === 0) return NextResponse.json({ keys: [] });
 
+  if (userIds.includes(session.user.id)) {
+    await ensureUserMasterKey(session.user.id);
+  }
+
   const keys = await prisma.userDeviceKey.findMany({
-    where: { userId: { in: userIds }, status: "active" },
+    where: { userId: { in: userIds }, kind: "device", status: "active" },
     select: { keyId: true, userId: true, publicKey: true, algorithm: true },
   });
 

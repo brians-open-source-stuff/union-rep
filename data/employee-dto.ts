@@ -508,7 +508,7 @@ export async function getMemberBirthdaysNext7Days() {
       const birthdate = employee.birthdate;
       if (!birthdate) return null;
 
-      let birthMonth = birthdate.getUTCMonth();
+      const birthMonth = birthdate.getUTCMonth();
       let birthDay = birthdate.getUTCDate();
 
       // Handle leap year birthdays

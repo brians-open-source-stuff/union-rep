@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/data/session";
 import { can } from "@/lib/utils";
-import { getCaseForRewrap } from "@/lib/rewrap-utils";
+import { ensureCaseAccessForUser, getCaseForRewrap } from "@/lib/rewrap-utils";
 
 export async function GET(
   request: NextRequest,
@@ -14,10 +14,12 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check both permissions
-  if (!can(session.user, "key:read") || !can(session.user, "key:update")) {
+  if (!can(session.user, "employee:read")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  // Attempt server-side recovery when only a master-key envelope exists.
+  await ensureCaseAccessForUser(caseId, session.user.id);
 
   const caseData = await getCaseForRewrap(caseId);
   if (!caseData) {

@@ -37,7 +37,7 @@ export async function getCasesForEmployee(employeeId: string): Promise<Encrypted
 
   try {
     const deviceKeys = await prisma.userDeviceKey.findMany({
-      where: { userId: session.user.id, status: "active" },
+      where: { userId: session.user.id, kind: { in: ["device", "master"] }, status: "active" },
       select: { keyId: true },
     });
     const deviceKeyIds = deviceKeys.map((k) => k.keyId);

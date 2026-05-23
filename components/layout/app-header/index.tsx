@@ -18,7 +18,6 @@ const SEGMENT_LABELS: Record<string, string> = {
 	managers: "Ledere",
 	sessions: "Sessioner",
 	users: "Brugere",
-	keys: "Nøgler",
 	new: "Ny",
 	login: "Login",
 	"change-password": "Skift adgangskode",

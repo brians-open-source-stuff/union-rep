@@ -85,7 +85,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             <CreateSalaryForm employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />
           </ModalDialog>
         </div>
-        <SalaryList salaries={salaries} />
+        <SalaryList salaries={salaries} employeeId={id} />
       </section>
     </>
   );

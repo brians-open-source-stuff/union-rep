@@ -207,19 +207,22 @@ model Session {
 }
 
 model UserDeviceKey {
-  id        String    @id @default(uuid())
-  userId    String
-  keyId     String    @unique
-  publicKey Json
-  algorithm String
-  status    String    @default("active")
-  createdAt DateTime  @default(now())
-  revokedAt DateTime?
+  id         String    @id @default(uuid())
+  userId     String
+  keyId      String    @unique
+  publicKey  Json
+  privateKey Json?
+  algorithm  String
+  kind       String    @default("device")
+  status     String    @default("active")
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([keyId])
+  @@index([userId, kind, status])
   @@schema("app")
 }
 
@@ -234,23 +237,5 @@ model UserManagerAccess {
 
   @@unique([userId, managerId])
   @@index([userId])
-  @@schema("app")
-}
-
-model RewrapJob {
-  id               String    @id @default(uuid())
-  status           String    @default("pending") // pending, in_progress, completed, failed
-  initiatedBy      String
-  startedAt        DateTime?
-  completedAt      DateTime?
-  totalRecords     Int       @default(0)
-  processedRecords Int       @default(0)
-  failedRecords    Int       @default(0)
-  error            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  @@index([status])
-  @@index([createdAt])
   @@schema("app")
 }
