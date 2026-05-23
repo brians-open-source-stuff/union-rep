@@ -1,13 +1,19 @@
 "use client";
-import { Pie, PieChart, Sector } from "recharts";
+import { Cell, Legend, Pie, PieChart } from "recharts";
 
 export default function MemberChart({ totalEmployees, members }: { totalEmployees: number; members: number }) {
 	const data = [
-		{ name: "Non-members", value: totalEmployees - members },
-		{ name: "Members", value: members },
+		{ name: "Ikke-medlemmer", value: totalEmployees - members },
+		{ name: "Medlemmer", value: members },
 	];
 
 	const colors = ["#93c5fd", "#ef4444"];
+	const total = data.reduce((sum, item) => sum + item.value, 0);
+
+	const toPercent = (value: number) => {
+		if (total === 0) return 0;
+		return Math.round((value / total) * 100);
+	};
 
 	return (
 		<div className="bg-gray-50 p-4 rounded-2xl">
@@ -18,7 +24,24 @@ export default function MemberChart({ totalEmployees, members }: { totalEmployee
 					dataKey="value"
 					cx="50%"
 					cy="50%"
-					shape={(props, index) => <Sector {...props} fill={colors[index]} />}
+					labelLine={false}
+					label={({ name, value }) => `${name}: ${toPercent(value as number)}%`}
+				>
+					{data.map((entry, index) => (
+						<Cell key={`${entry.name}-${index}`} fill={colors[index % colors.length]} />
+					))}
+				</Pie>
+				<Legend
+					align="center"
+					verticalAlign="bottom"
+					iconType="circle"
+					wrapperStyle={{ paddingTop: 12 }}
+					formatter={(value) => {
+						const name = String(value);
+						const item = data.find((entry) => entry.name === name);
+						if (!item) return name;
+						return `${name}: ${toPercent(item.value)}%`;
+					}}
 				/>
 			</PieChart>
 		</div>

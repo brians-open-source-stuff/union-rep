@@ -1,9 +1,14 @@
 "use client";
 
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
 	CartesianGrid,
-	Legend,
 	Line,
 	LineChart,
 	XAxis,
@@ -18,8 +23,8 @@ type TimelinePoint = {
 };
 
 const chartConfig = {
-	employees: { label: "Employees", color: "#93c5fd" }, // light blue
-	members: { label: "Members", color: "#ef4444" }, // red
+	employees: { label: "Medarbejdere", color: "#93c5fd" }, // lyseblaa
+	members: { label: "Medlemmer", color: "#ef4444" }, // roed
 };
 
 export default function MembershipTimelineChart({ data }: { data: TimelinePoint[] }) {
@@ -49,15 +54,11 @@ export default function MembershipTimelineChart({ data }: { data: TimelinePoint[
 					<ChartTooltip
 						content={
 							<ChartTooltipContent
-								formatter={(value, name) => [
-									typeof value === "number" ? value.toLocaleString() : String(value),
-									String(name),
-								]}
 								labelFormatter={(label) => "Måned: " + String(label)}
 							/>
 						}
 					/>
-					<Legend />
+					<ChartLegend content={<ChartLegendContent />} />
 					<Line
 						type="monotone"
 						dataKey="employees"
