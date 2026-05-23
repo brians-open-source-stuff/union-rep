@@ -94,6 +94,31 @@ async function main() {
 		return "Mentor";
 	}
 
+	function randomLastContact(employedAt: Date, currentDate: Date): Date | null {
+		const roll = Math.random();
+
+		// Weighted distribution for realistic follow-up patterns:
+		// 60% recent (0-30 days), 25% mild stale (31-75 days),
+		// 10% stale (76-180 days), 3% very stale (181-365 days), 2% no contact.
+		if (roll < 0.02) return null;
+
+		const daysAgo = (() => {
+			if (roll < 0.62) return Math.floor(Math.random() * 31);
+			if (roll < 0.87) return 31 + Math.floor(Math.random() * 45);
+			if (roll < 0.97) return 76 + Math.floor(Math.random() * 105);
+			return 181 + Math.floor(Math.random() * 185);
+		})();
+
+		const candidate = new Date(currentDate);
+		candidate.setDate(candidate.getDate() - daysAgo);
+
+		if (candidate < employedAt) {
+			return randomDate(employedAt, currentDate);
+		}
+
+		return candidate;
+	}
+
 	const firstNames = [
 		"Liam", "Noah", "Oliver", "Elijah", "James", "William", "Benjamin", "Lucas", "Henry", "Alexander",
 		"Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper", "Evelyn"
@@ -146,6 +171,7 @@ async function main() {
 	const employees = Array.from({ length: 250 }, () => {
 		const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
 		const employedAt = randomDate(employedStart, now);
+		const lastContact = randomLastContact(employedAt, now);
 
 		const hasMembership = Math.random() < 0.75;
 		const memberSince = hasMembership ? randomDate(employedAt, now) : null;
@@ -156,6 +182,7 @@ async function main() {
 		return {
 			name,
 			employedAt,
+			lastContact,
 			memberSince,
 			birthdate,
 			title,

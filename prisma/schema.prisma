@@ -58,6 +58,7 @@ model Employee {
   id          String    @id @default(uuid())
   name        String
   employedAt  DateTime
+  lastContact DateTime?
   memberSince DateTime?
   birthdate   DateTime?
   title       String?

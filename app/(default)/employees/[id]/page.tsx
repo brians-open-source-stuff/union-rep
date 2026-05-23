@@ -1,5 +1,6 @@
 import EditEmployeeForm from "@/components/forms/edit-employee-form";
 import DeleteEmployeeForm from "@/components/forms/delete-employee-form";
+import RegisterContactForm from "@/components/forms/register-contact-form";
 import CreateCaseForm from "@/components/forms/create-case-form";
 import CreateSalaryForm from "@/components/forms/create-salary-form";
 import ModalDialog from "@/components/layout/modal-dialog";
@@ -57,6 +58,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   return (
     <>
       <div className="mb-4 flex items-center gap-2">
+        {canUpdateEmployee ? <RegisterContactForm employeeId={employee.id} /> : null}
         {canUpdateEmployee ? (
           <ModalDialog buttonText="Rediger staminfo" buttonVariant="default">
             <EditEmployeeForm employee={employee} users={users} />
@@ -72,6 +74,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       <p>Ansættelsesdato: {Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(employee.employedAt)}</p>
       <p>{employee.memberSince ? <span className="bg-green-800 text-white px-2">Er medlem</span> : <span className="bg-red-500 text-white px-2">Er ikke medlem</span>}</p>
       <p>Primær kontakt: {nearestContact?.name ?? "Ikke tildelt"}</p>
+      <p>Sidste kontakt: {employee.lastContact ? Intl.DateTimeFormat("da-DK", { dateStyle: "long" }).format(employee.lastContact) : "Ingen registreret kontakt"}</p>
       <section className="mt-6">
         <h2 className="text-lg font-semibold">Sager <ModalDialog buttonText="Opret sag" buttonVariant="outline">
           <CreateCaseForm employeeId={id} currentUserName={currentSession?.user.name ?? "Ukendt"} />

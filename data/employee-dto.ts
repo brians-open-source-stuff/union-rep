@@ -8,6 +8,7 @@ import { getIP } from "@/lib/ip";
 export type UpdateEmployeeDtoInput = {
   employeeId: string;
   name: string;
+  lastContact: Date | null;
   title: string | null;
   email: string | null;
   emailAlt: string | null;
@@ -20,6 +21,7 @@ export type UpdateEmployeeDtoInput = {
 export type CreateEmployeeDtoInput = {
   name: string;
   employedAt: Date;
+  lastContact: Date | null;
   memberSince: Date | null;
   birthdate: Date | null;
   title: string | null;
@@ -110,6 +112,7 @@ export async function createEmployee(input: CreateEmployeeDtoInput): Promise<Emp
       data: {
         name: input.name,
         employedAt: input.employedAt,
+        lastContact: input.lastContact,
         memberSince: input.memberSince,
         birthdate: input.birthdate,
         title: input.title,
@@ -345,6 +348,7 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
       where: { id: input.employeeId },
       data: {
         name: input.name,
+        lastContact: input.lastContact,
         title: input.title,
         email: input.email,
         emailAlt: input.emailAlt,
@@ -383,6 +387,62 @@ export async function updateEmployee(input: UpdateEmployeeDtoInput): Promise<{ o
     });
 
     return { ok: false, reason: "Kunne ikke opdatere medarbejderen" };
+  }
+}
+
+export async function registerEmployeeContactNow(employeeId: string): Promise<{ ok: boolean; reason?: string }> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return { ok: false, reason: "Ingen aktiv session" };
+
+  const { sessionId, user } = currentSession;
+  if (!can(user, "employee:update")) {
+    return { ok: false, reason: "Mangler rettighed: employee:update" };
+  }
+
+  const isAdmin = user.roles.includes("admin");
+
+  try {
+    const employee = await prisma.employee.findFirst({
+      where: isAdmin
+        ? { id: employeeId }
+        : {
+          id: employeeId,
+          ...employeeAccessWhere(user.id),
+        },
+      select: { id: true },
+    });
+
+    if (!employee) {
+      return { ok: false, reason: "Medarbejderen findes ikke eller er ikke tilgaengelig" };
+    }
+
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { lastContact: new Date() },
+      select: { id: true },
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "update",
+      targetResourceId: employeeId,
+      success: true,
+    });
+
+    return { ok: true };
+  } catch {
+    await logAuditEvent({
+      userId: user.id,
+      sessionId,
+      ipAddress: await getIP(),
+      action: "update",
+      targetResourceId: employeeId,
+      success: false,
+    });
+
+    return { ok: false, reason: "Kunne ikke registrere kontakt" };
   }
 }
 
@@ -575,6 +635,17 @@ export type UpcomingAnniversary = {
   years: number;
 };
 
+export type ContactRiskEmployee = {
+  id: string;
+  name: string;
+  primaryContactName: string | null;
+  lastContact: Date | null;
+  daysWithoutContact: number | null;
+  riskScore: number;
+  riskLevel: "low" | "medium" | "high";
+  reason: string;
+};
+
 export async function getMemberEmploymentAnniversaries() {
   const where = await getDashboardEmployeeWhere();
   if (!where) return [];
@@ -626,4 +697,124 @@ export async function getMemberEmploymentAnniversaries() {
       employedAt: row.employedAt,
       years: row.years,
     }));
+}
+
+export async function getEmployeesAtContactRisk(limit = 8): Promise<ContactRiskEmployee[]> {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) return [];
+
+  const { user } = currentSession;
+  if (!can(user, "employee:read")) return [];
+
+  const dashboardWhere = user.roles.includes("admin") ? {} : employeeAccessWhere(user.id);
+
+  const staleThresholdDays = 45;
+  const staleThreshold = new Date();
+  staleThreshold.setUTCDate(staleThreshold.getUTCDate() - staleThresholdDays);
+
+  const employees = await prisma.employee.findMany({
+    where: {
+      ...dashboardWhere,
+      memberSince: { not: null },
+      assignments: {
+        some: {
+          ...activeAssignmentWhere(user.id),
+          relationshipType: {
+            in: ["primary_contact", "secondary_contact"],
+          },
+        },
+      },
+      OR: [
+        { lastContact: null },
+        { lastContact: { lt: staleThreshold } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      lastContact: true,
+      assignments: {
+        orderBy: [
+          { isPrimary: "desc" },
+          { createdAt: "asc" },
+        ],
+        select: {
+          isPrimary: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { lastContact: "asc" },
+      { name: "asc" },
+    ],
+    take: Math.max(limit * 3, 20),
+  });
+
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  const assessed = employees.map((employee) => {
+    const primaryAssignment = employee.assignments.find((assignment) => assignment.isPrimary);
+    const fallbackAssignment = employee.assignments[0];
+    const primaryContactName = primaryAssignment?.user.name ?? fallbackAssignment?.user.name ?? null;
+
+    const daysWithoutContact = employee.lastContact
+      ? Math.floor((todayUtc.getTime() - new Date(Date.UTC(
+        employee.lastContact.getUTCFullYear(),
+        employee.lastContact.getUTCMonth(),
+        employee.lastContact.getUTCDate(),
+      )).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    let riskScore = 0;
+    let reason = "";
+
+    if (daysWithoutContact === null) {
+      riskScore += 90;
+      reason = "Ingen kontakt er registreret";
+    } else if (daysWithoutContact >= 120) {
+      riskScore += 95;
+      reason = `${daysWithoutContact} dage siden sidste kontakt`;
+    } else if (daysWithoutContact >= 90) {
+      riskScore += 80;
+      reason = `${daysWithoutContact} dage siden sidste kontakt`;
+    } else if (daysWithoutContact >= 60) {
+      riskScore += 65;
+      reason = `${daysWithoutContact} dage siden sidste kontakt`;
+    } else {
+      riskScore += 45;
+      reason = `${daysWithoutContact} dage siden sidste kontakt`;
+    }
+
+    if (!primaryContactName) {
+      riskScore += 20;
+      reason = `${reason}. Ingen kontaktperson er tildelt`;
+    }
+
+    if (riskScore > 100) {
+      riskScore = 100;
+    }
+
+    const riskLevel = riskScore >= 85 ? "high" : riskScore >= 60 ? "medium" : "low";
+
+    return {
+      id: employee.id,
+      name: employee.name,
+      primaryContactName,
+      lastContact: employee.lastContact,
+      daysWithoutContact,
+      riskScore,
+      riskLevel,
+      reason,
+    };
+  });
+
+  return assessed
+    .sort((a, b) => b.riskScore - a.riskScore || a.name.localeCompare(b.name, "da"))
+    .slice(0, Math.max(1, limit));
 }

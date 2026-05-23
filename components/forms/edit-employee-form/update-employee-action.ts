@@ -12,6 +12,7 @@ export type UpdateEmployeeFormState = {
 const UpdateEmployeeSchema = z.object({
   employeeId: z.uuid(),
   name: z.string().trim().min(1),
+  lastContact: z.string().trim().optional(),
   title: z.string().trim().optional(),
   email: z.string().trim().optional(),
   emailAlt: z.string().trim().optional(),
@@ -27,6 +28,19 @@ function emptyToNull(value?: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function parseDateInput(value?: string): Date | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
 export default async function updateEmployeeAction(
   _prevState: UpdateEmployeeFormState,
   formData: FormData,
@@ -34,6 +48,7 @@ export default async function updateEmployeeAction(
   const parsed = UpdateEmployeeSchema.safeParse({
     employeeId: formData.get("employeeId"),
     name: formData.get("name"),
+    lastContact: formData.get("lastContact"),
     title: formData.get("title"),
     email: formData.get("email"),
     emailAlt: formData.get("emailAlt"),
@@ -53,6 +68,7 @@ export default async function updateEmployeeAction(
   const result = await updateEmployee({
     employeeId: parsed.data.employeeId,
     name: parsed.data.name,
+    lastContact: parseDateInput(parsed.data.lastContact),
     title: emptyToNull(parsed.data.title),
     email: emptyToNull(parsed.data.email),
     emailAlt: emptyToNull(parsed.data.emailAlt),

@@ -21,6 +21,7 @@ type EmployeeForEditForm = {
 	emailAlt: string | null;
 	phone: string | null;
 	phoneAlt: string | null;
+	lastContact: Date | null;
 	assignments: Array<{
 		id: string;
 		userId: string;
@@ -50,6 +51,7 @@ export default function EditEmployeeForm({
 	const [emailAlt, setEmailAlt] = useState(employee.emailAlt ?? "");
 	const [phone, setPhone] = useState(employee.phone ?? "");
 	const [phoneAlt, setPhoneAlt] = useState(employee.phoneAlt ?? "");
+	const [lastContact, setLastContact] = useState(employee.lastContact ? employee.lastContact.toISOString().slice(0, 10) : "");
 	const currentPrimaryAssignment = employee.assignments.find((assignment) => assignment.isPrimary);
 	const currentSecondaryAssignment = employee.assignments.find((assignment) => !assignment.isPrimary);
 	const [primaryUserId, setPrimaryUserId] = useState(currentPrimaryAssignment?.userId ?? "");
@@ -95,6 +97,15 @@ export default function EditEmployeeForm({
 							name="phoneAlt"
 							value={phoneAlt}
 							onChange={(event) => setPhoneAlt(event.target.value)}
+						/>
+					</FieldLabel>
+					<FieldLabel className="flex flex-col items-start">
+						<span>Sidste kontakt</span>
+						<Input
+							type="date"
+							name="lastContact"
+							value={lastContact}
+							onChange={(event) => setLastContact(event.target.value)}
 						/>
 					</FieldLabel>
 					<FieldLabel className="flex flex-col items-start">

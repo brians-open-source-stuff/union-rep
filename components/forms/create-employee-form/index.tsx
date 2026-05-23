@@ -58,6 +58,10 @@ export default function CreateEmployeeForm({
           <Input type="date" name="memberSince" />
         </FieldLabel>
         <FieldLabel className="flex flex-col items-start">
+          <span>Sidste kontakt</span>
+          <Input type="date" name="lastContact" />
+        </FieldLabel>
+        <FieldLabel className="flex flex-col items-start">
           <span>Fodselsdato</span>
           <Input type="date" name="birthdate" />
         </FieldLabel>

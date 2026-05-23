@@ -13,6 +13,7 @@ export type CreateEmployeeFormState = {
 const CreateEmployeeSchema = z.object({
   name: z.string().trim().min(1),
   employedAt: z.string().trim().min(1),
+  lastContact: z.string().trim().optional(),
   memberSince: z.string().trim().optional(),
   birthdate: z.string().trim().optional(),
   title: z.string().trim().optional(),
@@ -52,6 +53,7 @@ export default async function createEmployeeAction(
   const parsed = CreateEmployeeSchema.safeParse({
     name: formData.get("name"),
     employedAt: formData.get("employedAt"),
+    lastContact: formData.get("lastContact"),
     memberSince: formData.get("memberSince"),
     birthdate: formData.get("birthdate"),
     title: formData.get("title"),
@@ -77,6 +79,7 @@ export default async function createEmployeeAction(
   const result = await createEmployee({
     name: parsed.data.name,
     employedAt,
+    lastContact: parseDateInput(parsed.data.lastContact),
     memberSince: parseDateInput(parsed.data.memberSince),
     birthdate: parseDateInput(parsed.data.birthdate),
     title: emptyToNull(parsed.data.title),
